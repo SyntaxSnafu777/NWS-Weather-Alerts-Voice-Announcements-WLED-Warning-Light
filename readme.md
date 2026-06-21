@@ -18,11 +18,14 @@ It supports optional dashboard enable/disable control, alert-type filtering, ser
 * Serious alert bypass options for Tornado Warning, Severe Thunderstorm Warning, and Flash Flood Warning
 * Optional bypass for all enabled alert types
 * Optional default or custom preannounce sound before the voice announcement
+* Optional mobile push notifications to one or more Home Assistant Companion App devices
 * Optional media player volume control for voice alert announcements
 * Optional restore of previous voice media player volume
 * Automatic restore of previous warning light state
 * Configurable blink count, blink speed, and brightness
 * Uses different colors for different weather alert categories when alert-color mode is enabled
+* Customizable RGB colors for each alert category
+* Organized blueprint UI with collapsible sections for advanced options
 * Only triggers when the NWS alert count increases
 
 ## Example Use Case
@@ -33,10 +36,11 @@ When a new NWS alert is issued:
 
 1. The selected voice assistants play an optional preannounce sound.
 2. The selected voice assistants announce the alert.
-3. The selected warning lights flash.
-4. If the alert is not serious, the lights only flash when your selected occupancy sensor is active.
-5. If the alert is serious and bypass is enabled, the lights flash even if occupancy is not detected.
-6. After the alert sequence, the lights return to their previous state.
+3. Optional mobile push notifications are sent to selected phones or tablets.
+4. The selected warning lights flash.
+5. If the alert is not serious, the lights only flash when your selected occupancy sensor is active.
+6. If the alert is serious and bypass is enabled, the lights flash even if occupancy is not detected.
+7. After the alert sequence, the lights return to their previous state.
 
 ## Requirements
 
@@ -52,6 +56,12 @@ This blueprint expects the following Home Assistant entities or integrations:
 * Optional `input_boolean` helper toggle
 * Optional `media_player` entities for voice volume control
 * Optional local media file if using a custom preannounce sound
+* Optional Home Assistant Companion App mobile devices for push notifications
+* Home Assistant 2024.6.0 or newer for blueprint input sections
+
+## Blueprint Layout
+
+The blueprint inputs are organized into collapsible sections for easier setup.
 
 ## Recommended Helper Toggle
 
@@ -127,6 +137,20 @@ When **Light Flash Mode** is set to **Alert colors**, the default warning light 
 | Special Weather Statement      | White             |
 | Advisory                       | White             |
 | Other Alert                    | White             |
+
+You can override each of these colors in the blueprint settings.
+
+Each alert category has its own RGB color picker input, so users can keep the defaults or customize the warning colors for their own setup.
+
+For example:
+
+```text
+Tornado Warning Color: Purple / Magenta
+Severe Thunderstorm Warning Color: Red
+Flash Flood Warning Color: Blue
+Winter / Snow / Ice Color: Cyan
+```
+
 
 ## Light Compatibility
 
@@ -278,6 +302,29 @@ media-source://media_source/local/weather-alert-tone.mp3
 
 A short MP3 or WAV file is usually best.
 
+## Mobile Push Notifications
+
+The blueprint can send push notifications to one or more Home Assistant Companion App mobile devices.
+
+To use this feature:
+
+```text
+Send Mobile Push Notifications: enabled
+Mobile Notification Devices: select one or more phones/tablets
+```
+
+The notification title uses the alert event.
+
+Example:
+
+```text
+NWS Weather Alert: Tornado Warning
+```
+
+The notification message uses the alert headline from the NWS alert.
+
+Mobile push notifications use the Home Assistant Companion App mobile device integration. Your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
+
 ## Voice Volume Control
 
 Home Assistant Voice / Assist satellite entities do not always directly expose volume controls.
@@ -396,6 +443,16 @@ Example:
 media-source://media_source/local/weather-alert-tone.mp3
 ```
 
+### Send Mobile Push Notifications
+
+Enables optional push notifications to selected Home Assistant Companion App mobile devices.
+
+### Mobile Notification Devices
+
+One or more mobile devices to receive push notifications.
+
+These devices must be registered through the Home Assistant Companion App.
+
 ### Set Voice Alert Volume
 
 Enables optional volume control using selected `media_player` entities.
@@ -454,6 +511,27 @@ Controls whether the blueprint sends alert colors or brightness only.
 Use **Alert colors - RGB/RGBW lights** for WLED and color-capable bulbs.
 
 Use **Brightness only - basic smart bulbs** for white-only bulbs, dimmable bulbs, or mixed groups where not every selected light supports RGB color.
+
+### Alert Color Inputs
+
+Each alert category has a customizable color input.
+
+Available color inputs include:
+
+* Tornado Warning Color
+* Tornado Watch Color
+* Severe Thunderstorm Warning Color
+* Severe Thunderstorm Watch Color
+* Flash Flood Warning Color
+* Flood Warning / Flood Watch Color
+* Winter / Snow / Ice Color
+* Heat Alert Color
+* Wind Alert Color
+* Special Weather Statement Color
+* Advisory Color
+* Other Alert Color
+
+These are only used when **Light Flash Mode** is set to **Alert colors - RGB/RGBW lights**.
 
 ### Temporary Light Restore Scene ID
 
@@ -532,6 +610,9 @@ Enable Helper Entity: input_boolean.weather_alerts
 
 Use Preannounce Sound: enabled
 Custom Preannounce Media ID: blank
+
+Send Mobile Push Notifications: optional
+Mobile Notification Devices: select one or more phones/tablets if enabled
 
 Light Flash Mode: Alert colors - RGB/RGBW lights
 
@@ -745,6 +826,29 @@ To test a custom preannounce sound:
 
 If the custom sound does not play, clear **Custom Preannounce Media ID** and test again. With the field blank, Home Assistant should use the default Assist satellite preannounce sound.
 
+### Testing Mobile Push Notifications
+
+To test mobile push notifications:
+
+1. Enable **Send Mobile Push Notifications**.
+2. Select at least one device under **Mobile Notification Devices**.
+3. Run the fake Tornado Warning test.
+
+You should receive a Companion App push notification with the alert event as the title and the alert headline as the message.
+
+If the notification does not arrive, confirm that the device is connected through the Home Assistant Companion App and that notification permissions are allowed on the mobile device.
+
+### Testing Custom Alert Colors
+
+To test custom colors:
+
+1. Set **Light Flash Mode** to **Alert colors - RGB/RGBW lights**.
+2. Change one of the alert color inputs, such as **Tornado Warning Color**.
+3. Run the fake Tornado Warning test.
+4. Confirm the selected warning lights use your custom color.
+
+Custom colors are not used when **Light Flash Mode** is set to **Brightness only - basic smart bulbs**.
+
 ### Reset After Testing
 
 After testing, set the NWS alert sensor back to:
@@ -814,6 +918,16 @@ Check that:
 
 Try clearing **Custom Preannounce Media ID**. If the default preannounce sound works, the issue is likely the custom media ID or media file.
 
+### Mobile notification does not arrive
+
+Check that:
+
+* **Send Mobile Push Notifications** is enabled
+* At least one device is selected under **Mobile Notification Devices**
+* The selected device is registered through the Home Assistant Companion App
+* Notifications are allowed on the mobile device
+* The automation trace shows the mobile notification section running
+
 ### Voice volume does not change
 
 Check that:
@@ -832,6 +946,15 @@ Check that:
 * The occupancy sensor is `on`
 * Or the alert type is configured to bypass occupancy
 * The automation trace shows the light flashing section running
+
+### Custom alert color does not apply
+
+Check that:
+
+* **Light Flash Mode** is set to **Alert colors - RGB/RGBW lights**
+* You changed the color for the correct alert category
+* The selected light supports RGB color
+* The selected light integration accepts `rgb_color`
 
 ### Light color does not change
 
@@ -876,6 +999,8 @@ Check that:
 * The automation is enabled
 
 ## Notes
+
+Because this blueprint uses input sections, it requires Home Assistant 2024.6.0 or newer.
 
 This blueprint intentionally only runs when the alert count increases.
 

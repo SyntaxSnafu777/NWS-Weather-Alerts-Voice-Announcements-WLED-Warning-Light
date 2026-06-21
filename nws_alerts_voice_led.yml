@@ -6,312 +6,474 @@ blueprint:
     and flashes one or more light entities, such as WLED strips, RGB bulbs, or basic smart bulbs.
     Supports optional helper toggle control, alert-type filtering, serious-alert occupancy bypass,
     optional announcement volume control, optional custom preannounce sound, selectable light flash
-    mode, and automatic light state restore.
+    mode, customizable alert colors, optional mobile push notifications, and automatic light state restore.
   domain: automation
+  homeassistant:
+    min_version: 2024.6.0
 
   input:
-    nws_alert_sensor:
-      name: NWS Alert Sensor
+    core_settings:
+      name: Core Settings
+      icon: mdi:cog
       description: >
-        The NWS Alerts sensor whose state is the active alert count.
-      selector:
-        entity:
-          domain: sensor
+        Required entities and the NWS alert attribute used by this automation.
+      input:
+        nws_alert_sensor:
+          name: NWS Alert Sensor
+          description: >
+            The NWS Alerts sensor whose state is the active alert count.
+          selector:
+            entity:
+              domain: sensor
 
-    alert_attribute:
-      name: Alert List Attribute
+        alert_attribute:
+          name: Alert List Attribute
+          description: >
+            Attribute on the NWS sensor that contains the alert list.
+            For the NWS Alerts integration, this is commonly "Alerts".
+          default: Alerts
+          selector:
+            text:
+
+        voice_satellites:
+          name: Voice Assist Satellites
+          description: >
+            One or more Home Assistant Voice / Assist satellite entities to announce on.
+          selector:
+            entity:
+              domain: assist_satellite
+              multiple: true
+
+        occupancy_sensor:
+          name: Occupancy / Presence Sensor
+          description: >
+            The occupancy or presence sensor that normally must be on before the warning lights flash.
+            Serious alerts can optionally bypass this sensor.
+          selector:
+            entity:
+              domain: binary_sensor
+
+        alert_lights:
+          name: Warning Light Entities
+          description: >
+            One or more light entities to flash. Supports WLED, RGB/RGBW bulbs, and basic smart bulbs.
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+    enable_control:
+      name: Enable / Disable Control
+      icon: mdi:toggle-switch
+      collapsed: true
       description: >
-        Attribute on the NWS sensor that contains the alert list.
-        For the NWS Alerts integration, this is commonly "Alerts".
-      default: Alerts
-      selector:
-        text:
+        Optional helper toggle for dashboard control. Leave disabled if you always want alerts to run.
+      input:
+        use_enabled_helper:
+          name: Use Enable Helper
+          description: >
+            Enable this if you want a helper toggle to control whether weather alerts run.
+          default: false
+          selector:
+            boolean:
 
-    use_enabled_helper:
-      name: Use Enable Helper
+        enabled_helper:
+          name: Enable Helper Entity
+          description: >
+            Optional. Select your helper toggle, such as input_boolean.weather_alerts.
+            This is only used when "Use Enable Helper" is enabled.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
+
+    voice_and_audio:
+      name: Voice, Audio & Preannounce
+      icon: mdi:account-voice
+      collapsed: true
       description: >
-        Enable this if you want a helper toggle to control whether weather alerts run.
-      default: false
-      selector:
-        boolean:
+        Optional preannounce sound and volume controls for voice announcements.
+      input:
+        use_preannounce:
+          name: Use Preannounce Sound
+          description: >
+            Play a sound before the voice announcement. If no custom media ID is provided,
+            Home Assistant's default Assist satellite preannounce sound is used.
+          default: true
+          selector:
+            boolean:
 
-    enabled_helper:
-      name: Enable Helper Entity
+        preannounce_media_id:
+          name: Custom Preannounce Media ID
+          description: >
+            Optional. Media source ID for a custom sound to play before the announcement.
+            Leave blank to use the default Assist satellite preannounce sound.
+            Example: media-source://media_source/local/weather-alert-tone.mp3
+          default: ""
+          selector:
+            text:
+
+        use_voice_volume:
+          name: Set Voice Alert Volume
+          description: >
+            Enable this if your voice assistant also exposes a media_player entity and you want
+            the blueprint to set volume before announcing.
+          default: false
+          selector:
+            boolean:
+
+        voice_media_players:
+          name: Voice Media Player Entities
+          description: >
+            Optional. Select media_player entities associated with your voice assistants.
+            These are used only for volume control, not for the announcement itself.
+          default: []
+          selector:
+            entity:
+              domain: media_player
+              multiple: true
+
+        voice_volume_level:
+          name: Voice Alert Volume
+          description: >
+            Announcement volume level when volume control is enabled.
+          default: 0.8
+          selector:
+            number:
+              min: 0
+              max: 1
+              step: 0.05
+              mode: slider
+
+        restore_voice_volume:
+          name: Restore Voice Volume After Alert
+          description: >
+            Attempts to restore the selected media_player volume state after the alert.
+            This uses a temporary Home Assistant scene.
+          default: true
+          selector:
+            boolean:
+
+        volume_restore_scene_id:
+          name: Temporary Volume Restore Scene ID
+          description: >
+            Internal scene ID used to snapshot/restore selected media_player volume states.
+            Usually leave this alone.
+          default: before_weather_alert_voice_volume
+          selector:
+            text:
+
+    mobile_notifications:
+      name: Mobile Push Notifications
+      icon: mdi:cellphone-message
+      collapsed: true
       description: >
-        Optional. Select your helper toggle, such as input_boolean.weather_alerts.
-        This is only used when "Use Enable Helper" is enabled.
-      default: ""
-      selector:
-        entity:
-          domain: input_boolean
+        Optional Home Assistant Companion App push notifications.
+      input:
+        send_mobile_notifications:
+          name: Send Mobile Push Notifications
+          description: >
+            Send a Home Assistant Companion App push notification to one or more mobile devices
+            when a matching weather alert is detected.
+          default: false
+          selector:
+            boolean:
 
-    voice_satellites:
-      name: Voice Assist Satellites
+        mobile_notify_devices:
+          name: Mobile Notification Devices
+          description: >
+            Optional. Select one or more Home Assistant Companion App mobile devices to receive
+            push notifications. These are only used when "Send Mobile Push Notifications" is enabled.
+          default: []
+          selector:
+            device:
+              integration: mobile_app
+              multiple: true
+
+    light_behavior:
+      name: Light Behavior
+      icon: mdi:led-strip-variant
+      collapsed: false
       description: >
-        One or more Home Assistant Voice / Assist satellite entities to announce on.
-      selector:
-        entity:
-          domain: assist_satellite
-          multiple: true
+        Controls how warning lights flash and how their state is restored.
+      input:
+        light_flash_mode:
+          name: Light Flash Mode
+          description: >
+            Choose Alert Colors for RGB/RGBW lights such as WLED or color bulbs.
+            Choose Brightness Only for basic white/dimmable smart bulbs or mixed light groups
+            where some lights may not support RGB color.
+          default: alert_color
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Alert colors - RGB/RGBW lights
+                  value: alert_color
+                - label: Brightness only - basic smart bulbs
+                  value: brightness_only
 
-    use_preannounce:
-      name: Use Preannounce Sound
+        restore_scene_id:
+          name: Temporary Light Restore Scene ID
+          description: >
+            Internal scene ID used to snapshot/restore selected light states.
+            Usually leave this alone.
+          default: before_weather_alert_lights
+          selector:
+            text:
+
+        blink_count:
+          name: Blink Count
+          description: Number of on/off blinks.
+          default: 8
+          selector:
+            number:
+              min: 1
+              max: 30
+              step: 1
+              mode: slider
+
+        blink_delay_ms:
+          name: Blink Delay
+          description: Delay between on/off changes in milliseconds.
+          default: 500
+          selector:
+            number:
+              min: 100
+              max: 3000
+              step: 100
+              mode: slider
+              unit_of_measurement: ms
+
+        brightness_pct:
+          name: Flash Brightness
+          description: Brightness percentage used while flashing.
+          default: 100
+          selector:
+            number:
+              min: 1
+              max: 100
+              step: 1
+              mode: slider
+              unit_of_measurement: "%"
+
+    alert_type_filters:
+      name: Alert Type Filters
+      icon: mdi:filter-alert
+      collapsed: true
       description: >
-        Play a sound before the voice announcement. If no custom media ID is provided,
-        Home Assistant's default Assist satellite preannounce sound is used.
-      default: true
-      selector:
-        boolean:
+        Choose which NWS alert categories should trigger this automation.
+      input:
+        enable_tornado_warning:
+          name: Trigger on Tornado Warning
+          default: true
+          selector:
+            boolean:
 
-    preannounce_media_id:
-      name: Custom Preannounce Media ID
+        enable_tornado_watch:
+          name: Trigger on Tornado Watch
+          default: true
+          selector:
+            boolean:
+
+        enable_severe_thunderstorm_warning:
+          name: Trigger on Severe Thunderstorm Warning
+          default: true
+          selector:
+            boolean:
+
+        enable_severe_thunderstorm_watch:
+          name: Trigger on Severe Thunderstorm Watch
+          default: true
+          selector:
+            boolean:
+
+        enable_flash_flood_warning:
+          name: Trigger on Flash Flood Warning
+          default: true
+          selector:
+            boolean:
+
+        enable_flood_warning:
+          name: Trigger on Flood Warning
+          default: true
+          selector:
+            boolean:
+
+        enable_flood_watch:
+          name: Trigger on Flood Watch
+          default: true
+          selector:
+            boolean:
+
+        enable_winter_weather:
+          name: Trigger on Winter / Snow / Ice Alerts
+          default: true
+          selector:
+            boolean:
+
+        enable_heat_alerts:
+          name: Trigger on Heat Alerts
+          default: true
+          selector:
+            boolean:
+
+        enable_wind_alerts:
+          name: Trigger on Wind Alerts
+          default: true
+          selector:
+            boolean:
+
+        enable_special_weather_statement:
+          name: Trigger on Special Weather Statement
+          default: false
+          selector:
+            boolean:
+
+        enable_advisories:
+          name: Trigger on Weather Advisories
+          description: >
+            Enables common advisory-level alerts such as weather advisory, wind advisory,
+            winter weather advisory, heat advisory, and dense fog advisory.
+          default: false
+          selector:
+            boolean:
+
+        enable_other_alerts:
+          name: Trigger on Other Alerts
+          description: >
+            If enabled, alerts that do not match one of the known categories will still trigger.
+          default: false
+          selector:
+            boolean:
+
+    occupancy_bypass:
+      name: Occupancy Bypass
+      icon: mdi:motion-sensor
+      collapsed: true
       description: >
-        Optional. Media source ID for a custom sound to play before the announcement.
-        Leave blank to use the default Assist satellite preannounce sound.
-        Example: media-source://media_source/local/weather-alert-tone.mp3
-      default: ""
-      selector:
-        text:
+        Choose which serious alerts should flash lights even when occupancy is not detected.
+      input:
+        bypass_occupancy_tornado_warning:
+          name: Bypass Occupancy for Tornado Warning
+          description: Flash lights for Tornado Warnings even if the occupancy sensor is off.
+          default: true
+          selector:
+            boolean:
 
-    use_voice_volume:
-      name: Set Voice Alert Volume
+        bypass_occupancy_severe_thunderstorm_warning:
+          name: Bypass Occupancy for Severe Thunderstorm Warning
+          description: Flash lights for Severe Thunderstorm Warnings even if the occupancy sensor is off.
+          default: false
+          selector:
+            boolean:
+
+        bypass_occupancy_flash_flood_warning:
+          name: Bypass Occupancy for Flash Flood Warning
+          description: Flash lights for Flash Flood Warnings even if the occupancy sensor is off.
+          default: false
+          selector:
+            boolean:
+
+        bypass_occupancy_all_enabled_alerts:
+          name: Bypass Occupancy for All Enabled Alerts
+          description: >
+            If enabled, selected warning lights flash for any enabled alert type regardless of occupancy.
+          default: false
+          selector:
+            boolean:
+
+    alert_colors:
+      name: Alert Colors
+      icon: mdi:palette
+      collapsed: true
       description: >
-        Enable this if your voice assistant also exposes a media_player entity and you want
-        the blueprint to set volume before announcing.
-      default: false
-      selector:
-        boolean:
+        Optional custom colors for RGB/RGBW warning lights. These are only used when Light Flash Mode
+        is set to Alert colors.
+      input:
+        tornado_warning_color:
+          name: Tornado Warning Color
+          description: Alert color used for Tornado Warnings.
+          default: [255, 0, 255]
+          selector:
+            color_rgb:
 
-    voice_media_players:
-      name: Voice Media Player Entities
-      description: >
-        Optional. Select media_player entities associated with your voice assistants.
-        These are used only for volume control, not for the announcement itself.
-      default: []
-      selector:
-        entity:
-          domain: media_player
-          multiple: true
+        tornado_watch_color:
+          name: Tornado Watch Color
+          description: Alert color used for Tornado Watches.
+          default: [255, 128, 0]
+          selector:
+            color_rgb:
 
-    voice_volume_level:
-      name: Voice Alert Volume
-      description: >
-        Announcement volume level when volume control is enabled.
-      default: 0.8
-      selector:
-        number:
-          min: 0
-          max: 1
-          step: 0.05
-          mode: slider
+        severe_thunderstorm_warning_color:
+          name: Severe Thunderstorm Warning Color
+          description: Alert color used for Severe Thunderstorm Warnings.
+          default: [255, 0, 0]
+          selector:
+            color_rgb:
 
-    restore_voice_volume:
-      name: Restore Voice Volume After Alert
-      description: >
-        Attempts to restore the selected media_player volume state after the alert.
-        This uses a temporary Home Assistant scene.
-      default: true
-      selector:
-        boolean:
+        severe_thunderstorm_watch_color:
+          name: Severe Thunderstorm Watch Color
+          description: Alert color used for Severe Thunderstorm Watches.
+          default: [255, 255, 0]
+          selector:
+            color_rgb:
 
-    occupancy_sensor:
-      name: Occupancy / Presence Sensor
-      description: >
-        The occupancy or presence sensor that normally must be on before the warning lights flash.
-        Serious alerts can optionally bypass this sensor.
-      selector:
-        entity:
-          domain: binary_sensor
+        flash_flood_warning_color:
+          name: Flash Flood Warning Color
+          description: Alert color used for Flash Flood Warnings.
+          default: [0, 0, 255]
+          selector:
+            color_rgb:
 
-    alert_lights:
-      name: Warning Light Entities
-      description: >
-        One or more light entities to flash. Supports WLED, RGB/RGBW bulbs, and basic smart bulbs.
-      selector:
-        entity:
-          domain: light
-          multiple: true
+        flood_color:
+          name: Flood Warning / Flood Watch Color
+          description: Alert color used for Flood Warnings and Flood Watches.
+          default: [0, 80, 255]
+          selector:
+            color_rgb:
 
-    light_flash_mode:
-      name: Light Flash Mode
-      description: >
-        Choose Alert Colors for RGB/RGBW lights such as WLED or color bulbs.
-        Choose Brightness Only for basic white/dimmable smart bulbs or mixed light groups
-        where some lights may not support RGB color.
-      default: alert_color
-      selector:
-        select:
-          mode: dropdown
-          options:
-            - label: Alert colors - RGB/RGBW lights
-              value: alert_color
-            - label: Brightness only - basic smart bulbs
-              value: brightness_only
+        winter_weather_color:
+          name: Winter / Snow / Ice Color
+          description: Alert color used for winter, snow, ice, and blizzard alerts.
+          default: [0, 255, 255]
+          selector:
+            color_rgb:
 
-    restore_scene_id:
-      name: Temporary Light Restore Scene ID
-      description: >
-        Internal scene ID used to snapshot/restore selected light states.
-        Usually leave this alone.
-      default: before_weather_alert_lights
-      selector:
-        text:
+        heat_alert_color:
+          name: Heat Alert Color
+          description: Alert color used for heat and excessive heat alerts.
+          default: [255, 80, 0]
+          selector:
+            color_rgb:
 
-    volume_restore_scene_id:
-      name: Temporary Volume Restore Scene ID
-      description: >
-        Internal scene ID used to snapshot/restore selected media_player volume states.
-        Usually leave this alone.
-      default: before_weather_alert_voice_volume
-      selector:
-        text:
+        wind_alert_color:
+          name: Wind Alert Color
+          description: Alert color used for wind and high wind alerts.
+          default: [180, 180, 255]
+          selector:
+            color_rgb:
 
-    blink_count:
-      name: Blink Count
-      description: Number of on/off blinks.
-      default: 8
-      selector:
-        number:
-          min: 1
-          max: 30
-          step: 1
-          mode: slider
+        special_weather_statement_color:
+          name: Special Weather Statement Color
+          description: Alert color used for Special Weather Statements.
+          default: [255, 255, 255]
+          selector:
+            color_rgb:
 
-    blink_delay_ms:
-      name: Blink Delay
-      description: Delay between on/off changes in milliseconds.
-      default: 500
-      selector:
-        number:
-          min: 100
-          max: 3000
-          step: 100
-          mode: slider
-          unit_of_measurement: ms
+        advisory_color:
+          name: Advisory Color
+          description: Alert color used for advisory-level alerts.
+          default: [255, 255, 255]
+          selector:
+            color_rgb:
 
-    brightness_pct:
-      name: Flash Brightness
-      description: Brightness percentage used while flashing.
-      default: 100
-      selector:
-        number:
-          min: 1
-          max: 100
-          step: 1
-          mode: slider
-          unit_of_measurement: "%"
-
-    enable_tornado_warning:
-      name: Trigger on Tornado Warning
-      default: true
-      selector:
-        boolean:
-
-    enable_tornado_watch:
-      name: Trigger on Tornado Watch
-      default: true
-      selector:
-        boolean:
-
-    enable_severe_thunderstorm_warning:
-      name: Trigger on Severe Thunderstorm Warning
-      default: true
-      selector:
-        boolean:
-
-    enable_severe_thunderstorm_watch:
-      name: Trigger on Severe Thunderstorm Watch
-      default: true
-      selector:
-        boolean:
-
-    enable_flash_flood_warning:
-      name: Trigger on Flash Flood Warning
-      default: true
-      selector:
-        boolean:
-
-    enable_flood_warning:
-      name: Trigger on Flood Warning
-      default: true
-      selector:
-        boolean:
-
-    enable_flood_watch:
-      name: Trigger on Flood Watch
-      default: true
-      selector:
-        boolean:
-
-    enable_winter_weather:
-      name: Trigger on Winter / Snow / Ice Alerts
-      default: true
-      selector:
-        boolean:
-
-    enable_heat_alerts:
-      name: Trigger on Heat Alerts
-      default: true
-      selector:
-        boolean:
-
-    enable_wind_alerts:
-      name: Trigger on Wind Alerts
-      default: true
-      selector:
-        boolean:
-
-    enable_special_weather_statement:
-      name: Trigger on Special Weather Statement
-      default: false
-      selector:
-        boolean:
-
-    enable_advisories:
-      name: Trigger on Weather Advisories
-      description: >
-        Enables common advisory-level alerts such as weather advisory, wind advisory,
-        winter weather advisory, heat advisory, and dense fog advisory.
-      default: false
-      selector:
-        boolean:
-
-    enable_other_alerts:
-      name: Trigger on Other Alerts
-      description: >
-        If enabled, alerts that do not match one of the known categories will still trigger.
-      default: false
-      selector:
-        boolean:
-
-    bypass_occupancy_tornado_warning:
-      name: Bypass Occupancy for Tornado Warning
-      description: Flash lights for Tornado Warnings even if the occupancy sensor is off.
-      default: true
-      selector:
-        boolean:
-
-    bypass_occupancy_severe_thunderstorm_warning:
-      name: Bypass Occupancy for Severe Thunderstorm Warning
-      description: Flash lights for Severe Thunderstorm Warnings even if the occupancy sensor is off.
-      default: false
-      selector:
-        boolean:
-
-    bypass_occupancy_flash_flood_warning:
-      name: Bypass Occupancy for Flash Flood Warning
-      description: Flash lights for Flash Flood Warnings even if the occupancy sensor is off.
-      default: false
-      selector:
-        boolean:
-
-    bypass_occupancy_all_enabled_alerts:
-      name: Bypass Occupancy for All Enabled Alerts
-      description: >
-        If enabled, selected warning lights flash for any enabled alert type regardless of occupancy.
-      default: false
-      selector:
-        boolean:
+        other_alert_color:
+          name: Other Alert Color
+          description: Alert color used for alerts that do not match a known category.
+          default: [255, 255, 255]
+          selector:
+            color_rgb:
 
 mode: queued
 max: 10
@@ -332,12 +494,28 @@ variables:
   use_preannounce: !input use_preannounce
   preannounce_media_id: !input preannounce_media_id
 
+  send_mobile_notifications: !input send_mobile_notifications
+  mobile_notify_devices: !input mobile_notify_devices
+
   use_voice_volume: !input use_voice_volume
   voice_media_players: !input voice_media_players
   voice_volume_level: !input voice_volume_level
   restore_voice_volume: !input restore_voice_volume
 
   light_flash_mode: !input light_flash_mode
+
+  tornado_warning_color: !input tornado_warning_color
+  tornado_watch_color: !input tornado_watch_color
+  severe_thunderstorm_warning_color: !input severe_thunderstorm_warning_color
+  severe_thunderstorm_watch_color: !input severe_thunderstorm_watch_color
+  flash_flood_warning_color: !input flash_flood_warning_color
+  flood_color: !input flood_color
+  winter_weather_color: !input winter_weather_color
+  heat_alert_color: !input heat_alert_color
+  wind_alert_color: !input wind_alert_color
+  special_weather_statement_color: !input special_weather_statement_color
+  advisory_color: !input advisory_color
+  other_alert_color: !input other_alert_color
 
   restore_scene_id: !input restore_scene_id
   volume_restore_scene_id: !input volume_restore_scene_id
@@ -504,29 +682,29 @@ variables:
 
   alert_rgb: >-
     {% if 'tornado warning' in event_lc %}
-      [255, 0, 255]
+      {{ tornado_warning_color }}
     {% elif 'tornado watch' in event_lc %}
-      [255, 128, 0]
+      {{ tornado_watch_color }}
     {% elif 'severe thunderstorm warning' in event_lc %}
-      [255, 0, 0]
+      {{ severe_thunderstorm_warning_color }}
     {% elif 'severe thunderstorm watch' in event_lc %}
-      [255, 255, 0]
+      {{ severe_thunderstorm_watch_color }}
     {% elif 'flash flood warning' in event_lc %}
-      [0, 0, 255]
+      {{ flash_flood_warning_color }}
     {% elif 'flood warning' in event_lc or 'flood watch' in event_lc %}
-      [0, 80, 255]
+      {{ flood_color }}
     {% elif 'winter storm' in event_lc or 'winter weather' in event_lc or 'snow' in event_lc or 'ice' in event_lc or 'blizzard' in event_lc %}
-      [0, 255, 255]
+      {{ winter_weather_color }}
     {% elif 'heat' in event_lc or 'excessive heat' in event_lc %}
-      [255, 80, 0]
+      {{ heat_alert_color }}
     {% elif 'wind' in event_lc or 'high wind' in event_lc %}
-      [180, 180, 255]
+      {{ wind_alert_color }}
     {% elif 'special weather statement' in event_lc %}
-      [255, 255, 255]
+      {{ special_weather_statement_color }}
     {% elif 'advisory' in event_lc %}
-      [255, 255, 255]
+      {{ advisory_color }}
     {% else %}
-      [255, 255, 255]
+      {{ other_alert_color }}
     {% endif %}
 
   should_bypass_occupancy: >-
@@ -541,6 +719,12 @@ variables:
   alert_message: >-
     National Weather Service alert.
     {{ matched_alert_event }}.
+    {{ matched_alert_headline }}
+
+  alert_notification_title: >-
+    NWS Weather Alert: {{ matched_alert_event }}
+
+  alert_notification_message: >-
     {{ matched_alert_headline }}
 
 conditions:
@@ -632,6 +816,21 @@ actions:
         data:
           message: "{{ alert_message }}"
           preannounce: false
+
+  # Optionally send mobile push notifications to selected Companion App devices.
+  - if:
+      - condition: template
+        value_template: >
+          {{ send_mobile_notifications and mobile_notify_devices | count > 0 }}
+    then:
+      - repeat:
+          for_each: !input mobile_notify_devices
+          sequence:
+            - device_id: "{{ repeat.item }}"
+              domain: mobile_app
+              type: notify
+              title: "{{ alert_notification_title }}"
+              message: "{{ alert_notification_message }}"
 
   # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
   - if:
