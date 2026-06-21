@@ -26,13 +26,14 @@ It supports optional dashboard enable/disable control, alert-type filtering, ser
 * Uses different colors for different weather alert categories when alert-color mode is enabled
 * Customizable RGB colors for each alert category
 * Organized blueprint UI with collapsible sections for advanced options
-* Only triggers when the NWS alert count increases
+* Prioritizes active alerts so the most serious enabled alert is announced first
+* Runs when the highest-priority enabled alert is new, changed, or becomes more serious
 
 ## Example Use Case
 
 You have Home Assistant Voice devices around your home and a WLED LED strip above your desk.
 
-When a new NWS alert is issued:
+When a new NWS alert is issued or the highest-priority active alert changes:
 
 1. The selected voice assistants play an optional preannounce sound.
 2. The selected voice assistants announce the alert.
@@ -405,22 +406,68 @@ This should restore normal light state, brightness, color, and many standard lig
 
 If your WLED strip was running a complex WLED preset or effect, Home Assistant may not always restore every WLED-specific detail perfectly. For basic light state, color, and brightness, this should work well.
 
+## Alert Priority
+
+If multiple NWS alerts are active at the same time, the blueprint does not simply use the first alert in the NWS alert list.
+
+Instead, it evaluates all active alerts, ignores alert types that are disabled in the blueprint settings, assigns each matching alert a priority, and uses the highest-priority enabled alert for:
+
+* Voice announcement
+* Mobile notification
+* Warning light color
+* Occupancy bypass logic
+
+Priority order:
+
+| Priority | Alert Type |
+|---:|---|
+| 1 | Tornado Warning |
+| 2 | Flash Flood Warning |
+| 3 | Severe Thunderstorm Warning |
+| 4 | Tornado Watch |
+| 5 | Severe Thunderstorm Watch |
+| 6 | Flood Warning |
+| 7 | Winter Storm / Blizzard / Ice Warning |
+| 8 | High Wind Warning |
+| 9 | Excessive Heat Warning |
+| 10 | Flood Watch |
+| 11 | Winter / Snow / Ice Alerts |
+| 12 | Heat Alerts |
+| 13 | Wind Alerts |
+| 14 | Special Weather Statement |
+| 15 | Weather Advisories |
+| 16 | Other Alerts |
+
+This helps ensure that if a Severe Thunderstorm Watch and Tornado Warning are active at the same time, the Tornado Warning is the alert that gets announced and used for the warning light color.
+
 ## Trigger Behavior
 
-The automation triggers when the NWS alert sensor changes state.
+The automation triggers when the NWS alert sensor changes.
 
-It only runs when the alert count increases.
+The blueprint then compares the current highest-priority enabled alert against the previous highest-priority enabled alert.
+
+It runs when:
+
+```text
+There was no previous enabled alert
+The highest-priority enabled alert changed
+The highest-priority enabled alert became more serious
+The highest-priority enabled alert headline/details changed
+```
 
 Examples:
 
 ```text
-0 → 1 = runs
-1 → 2 = runs
-2 → 1 = does not run
-1 → 0 = does not run
+No alerts → Tornado Warning = runs
+Severe Thunderstorm Watch → Tornado Warning = runs
+Severe Thunderstorm Warning + Tornado Warning arrive together = Tornado Warning is used
+Tornado Watch + Severe Thunderstorm Warning arrive together = Severe Thunderstorm Warning is used
+Tornado Warning remains active and a lower-priority Flood Watch is added = Tornado Warning remains the selected alert
 ```
 
-This prevents the automation from announcing alerts when alerts expire or decrease.
+There is no cooldown. This avoids blocking a serious alert that appears shortly after a less serious alert.
+
+The blueprint does not announce alerts when the only change is an alert expiring or a lower-priority alert changing while the highest-priority selected alert stays the same.
 
 ## Blueprint Inputs
 
@@ -940,18 +987,23 @@ You can also reload the NWS Alerts integration or restart Home Assistant to let 
 
 ### Testing Notes
 
-The blueprint only triggers when the alert count increases.
+The blueprint now uses highest-priority alert change detection instead of simple alert-count-only detection.
 
-Examples:
+For repeated tests, reset the sensor to `0` with `Alerts: []`, then set it back to `1` with the fake alert you want to test.
 
-```text
-0 → 1 = runs
-1 → 2 = runs
-2 → 1 = does not run
-1 → 0 = does not run
+To test priority behavior, you can include multiple fake alerts at the same time.
+
+Example:
+
+```yaml
+Alerts:
+  - Event: Severe Thunderstorm Watch
+    Headline: TEST ONLY. Severe Thunderstorm Watch test.
+  - Event: Tornado Warning
+    Headline: TEST ONLY. Tornado Warning test.
 ```
 
-For repeated tests, always reset the sensor to `0` first, then set it back to `1`.
+The blueprint should choose the Tornado Warning because it has higher priority.
 
 ### If the Test Does Not Work
 
@@ -1071,7 +1123,7 @@ If your integration uses a different attribute name, update the blueprint input 
 
 Check that:
 
-* The NWS alert sensor state increased
+* The highest-priority enabled alert is new, changed, or more serious than the previous selected alert
 * Your selected alert type is enabled in the blueprint
 * The optional helper is on, if enabled
 * The alert list attribute contains at least one active alert
@@ -1079,13 +1131,10 @@ Check that:
 
 ## Notes
 
-The Alert Type Filters section uses `mdi:alert-decagram` for better Home Assistant UI compatibility.
-
-
 Because this blueprint uses input sections, it requires Home Assistant 2024.6.0 or newer.
 
-This blueprint intentionally only runs when the alert count increases.
+This blueprint intentionally prioritizes active alerts and uses the highest-priority enabled alert for announcements, notifications, light colors, and bypass logic.
 
-It does not re-announce when alerts expire or when the count decreases.
+It does not use a cooldown, so a more serious alert can still trigger immediately after a less serious alert.
 
-If multiple alerts are active, the blueprint announces the first active alert that matches your enabled alert categories.
+It does not re-announce when alerts expire or when the highest-priority selected alert remains unchanged.

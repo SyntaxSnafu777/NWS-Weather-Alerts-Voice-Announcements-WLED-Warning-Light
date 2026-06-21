@@ -729,9 +729,9 @@ variables:
   alerts: "{{ state_attr(nws_sensor, alert_attr) }}"
 
   matched_alert_event: >-
-    {% set ns = namespace(event='') %}
+    {% set ns = namespace(event='', headline='', priority=999) %}
     {% if alerts is not none and alerts | count > 0 %}
-      {% for alert in alerts if ns.event == '' %}
+      {% for alert in alerts %}
         {% set event = alert.Event
           | default(alert.event, true)
           | default(alert.event_name, true)
@@ -742,13 +742,16 @@ variables:
         {% set el = e | lower %}
 
         {% set is_tornado_warning = 'tornado warning' in el %}
-        {% set is_tornado_watch = 'tornado watch' in el %}
-        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
-        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
         {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
         {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
         {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
         {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
         {% set is_heat = 'heat' in el or 'excessive heat' in el %}
         {% set is_wind = 'wind' in el or 'high wind' in el %}
         {% set is_special = 'special weather statement' in el %}
@@ -756,10 +759,10 @@ variables:
 
         {% set known =
           is_tornado_warning or
-          is_tornado_watch or
-          is_severe_thunderstorm_warning or
-          is_severe_thunderstorm_watch or
           is_flash_flood_warning or
+          is_severe_thunderstorm_warning or
+          is_tornado_watch or
+          is_severe_thunderstorm_watch or
           is_flood_warning or
           is_flood_watch or
           is_winter or
@@ -769,33 +772,59 @@ variables:
           is_advisory
         %}
 
-        {% set matched =
-          (enable_tornado_warning and is_tornado_warning) or
-          (enable_tornado_watch and is_tornado_watch) or
-          (enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning) or
-          (enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch) or
-          (enable_flash_flood_warning and is_flash_flood_warning) or
-          (enable_flood_warning and is_flood_warning) or
-          (enable_flood_watch and is_flood_watch) or
-          (enable_winter_weather and is_winter) or
-          (enable_heat_alerts and is_heat) or
-          (enable_wind_alerts and is_wind) or
-          (enable_special_weather_statement and is_special) or
-          (enable_advisories and is_advisory) or
-          (enable_other_alerts and not known)
-        %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}
+          {% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}
+          {% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}
+          {% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}
+          {% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}
+          {% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}
+          {% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}
+          {% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}
+          {% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}
+          {% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}
+          {% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}
+          {% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}
+          {% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}
+          {% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}
+          {% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}
+          {% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}
+          {% set priority = 900 %}
+        {% endif %}
 
-        {% if matched %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
           {% set ns.event = e %}
+          {% set headline = alert.Headline
+            | default(alert.headline, true)
+            | default(alert.Description, true)
+            | default(alert.description, true)
+            | default('There is an active National Weather Service alert.', true) %}
+          {% set ns.headline = headline | string %}
         {% endif %}
       {% endfor %}
     {% endif %}
     {{ ns.event }}
 
   matched_alert_headline: >-
-    {% set ns = namespace(headline='') %}
+    {% set ns = namespace(event='', headline='', priority=999) %}
     {% if alerts is not none and alerts | count > 0 %}
-      {% for alert in alerts if ns.headline == '' %}
+      {% for alert in alerts %}
         {% set event = alert.Event
           | default(alert.event, true)
           | default(alert.event_name, true)
@@ -806,13 +835,16 @@ variables:
         {% set el = e | lower %}
 
         {% set is_tornado_warning = 'tornado warning' in el %}
-        {% set is_tornado_watch = 'tornado watch' in el %}
-        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
-        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
         {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
         {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
         {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
         {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
         {% set is_heat = 'heat' in el or 'excessive heat' in el %}
         {% set is_wind = 'wind' in el or 'high wind' in el %}
         {% set is_special = 'special weather statement' in el %}
@@ -820,10 +852,10 @@ variables:
 
         {% set known =
           is_tornado_warning or
-          is_tornado_watch or
-          is_severe_thunderstorm_warning or
-          is_severe_thunderstorm_watch or
           is_flash_flood_warning or
+          is_severe_thunderstorm_warning or
+          is_tornado_watch or
+          is_severe_thunderstorm_watch or
           is_flood_warning or
           is_flood_watch or
           is_winter or
@@ -833,23 +865,44 @@ variables:
           is_advisory
         %}
 
-        {% set matched =
-          (enable_tornado_warning and is_tornado_warning) or
-          (enable_tornado_watch and is_tornado_watch) or
-          (enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning) or
-          (enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch) or
-          (enable_flash_flood_warning and is_flash_flood_warning) or
-          (enable_flood_warning and is_flood_warning) or
-          (enable_flood_watch and is_flood_watch) or
-          (enable_winter_weather and is_winter) or
-          (enable_heat_alerts and is_heat) or
-          (enable_wind_alerts and is_wind) or
-          (enable_special_weather_statement and is_special) or
-          (enable_advisories and is_advisory) or
-          (enable_other_alerts and not known)
-        %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}
+          {% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}
+          {% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}
+          {% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}
+          {% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}
+          {% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}
+          {% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}
+          {% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}
+          {% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}
+          {% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}
+          {% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}
+          {% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}
+          {% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}
+          {% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}
+          {% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}
+          {% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}
+          {% set priority = 900 %}
+        {% endif %}
 
-        {% if matched %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
+          {% set ns.event = e %}
           {% set headline = alert.Headline
             | default(alert.headline, true)
             | default(alert.Description, true)
@@ -860,6 +913,217 @@ variables:
       {% endfor %}
     {% endif %}
     {{ ns.headline }}
+
+  matched_alert_priority: >-
+    {% set ns = namespace(priority=999) %}
+    {% if alerts is not none and alerts | count > 0 %}
+      {% for alert in alerts %}
+        {% set event = alert.Event
+          | default(alert.event, true)
+          | default(alert.event_name, true)
+          | default(alert.Title, true)
+          | default(alert.title, true)
+          | default('', true) %}
+        {% set el = event | string | lower %}
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+        {% set known = is_tornado_warning or is_flash_flood_warning or is_severe_thunderstorm_warning or is_tornado_watch or is_severe_thunderstorm_watch or is_flood_warning or is_flood_watch or is_winter or is_heat or is_wind or is_special or is_advisory %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}{% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}{% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}{% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}{% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}{% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}{% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}{% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}{% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}{% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}{% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}{% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}{% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}{% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}{% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}{% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}{% set priority = 900 %}
+        {% endif %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.priority }}
+
+  matched_alert_signature: >-
+    {{ matched_alert_priority | string }}|{{ matched_alert_event | trim }}|{{ matched_alert_headline | trim }}
+
+  previous_alerts: >-
+    {{ trigger.from_state.attributes.get(alert_attr, [])
+       if trigger.from_state is not none
+       else [] }}
+
+  previous_matched_alert_event: >-
+    {% set alerts_prev = previous_alerts %}
+    {% set ns = namespace(event='', priority=999) %}
+    {% if alerts_prev is not none and alerts_prev | count > 0 %}
+      {% for alert in alerts_prev %}
+        {% set event = alert.Event | default(alert.event, true) | default(alert.event_name, true) | default(alert.Title, true) | default(alert.title, true) | default('', true) %}
+        {% set e = event | string %}
+        {% set el = e | lower %}
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+        {% set known = is_tornado_warning or is_flash_flood_warning or is_severe_thunderstorm_warning or is_tornado_watch or is_severe_thunderstorm_watch or is_flood_warning or is_flood_watch or is_winter or is_heat or is_wind or is_special or is_advisory %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}{% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}{% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}{% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}{% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}{% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}{% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}{% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}{% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}{% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}{% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}{% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}{% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}{% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}{% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}{% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}{% set priority = 900 %}
+        {% endif %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
+          {% set ns.event = e %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.event }}
+
+  previous_matched_alert_headline: >-
+    {% set alerts_prev = previous_alerts %}
+    {% set ns = namespace(headline='', priority=999) %}
+    {% if alerts_prev is not none and alerts_prev | count > 0 %}
+      {% for alert in alerts_prev %}
+        {% set event = alert.Event | default(alert.event, true) | default(alert.event_name, true) | default(alert.Title, true) | default(alert.title, true) | default('', true) %}
+        {% set el = event | string | lower %}
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+        {% set known = is_tornado_warning or is_flash_flood_warning or is_severe_thunderstorm_warning or is_tornado_watch or is_severe_thunderstorm_watch or is_flood_warning or is_flood_watch or is_winter or is_heat or is_wind or is_special or is_advisory %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}{% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}{% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}{% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}{% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}{% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}{% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}{% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}{% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}{% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}{% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}{% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}{% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}{% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}{% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}{% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}{% set priority = 900 %}
+        {% endif %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
+          {% set headline = alert.Headline | default(alert.headline, true) | default(alert.Description, true) | default(alert.description, true) | default('There is an active National Weather Service alert.', true) %}
+          {% set ns.headline = headline | string %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.headline }}
+
+  previous_matched_alert_priority: >-
+    {% set alerts_prev = previous_alerts %}
+    {% set ns = namespace(priority=999) %}
+    {% if alerts_prev is not none and alerts_prev | count > 0 %}
+      {% for alert in alerts_prev %}
+        {% set event = alert.Event | default(alert.event, true) | default(alert.event_name, true) | default(alert.Title, true) | default(alert.title, true) | default('', true) %}
+        {% set el = event | string | lower %}
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter_warning = 'blizzard warning' in el or 'winter storm warning' in el or 'ice storm warning' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_high_wind_warning = 'high wind warning' in el %}
+        {% set is_excessive_heat_warning = 'excessive heat warning' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+        {% set known = is_tornado_warning or is_flash_flood_warning or is_severe_thunderstorm_warning or is_tornado_watch or is_severe_thunderstorm_watch or is_flood_warning or is_flood_watch or is_winter or is_heat or is_wind or is_special or is_advisory %}
+        {% set priority = 999 %}
+        {% if enable_tornado_warning and is_tornado_warning %}{% set priority = 10 %}
+        {% elif enable_flash_flood_warning and is_flash_flood_warning %}{% set priority = 20 %}
+        {% elif enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning %}{% set priority = 30 %}
+        {% elif enable_tornado_watch and is_tornado_watch %}{% set priority = 40 %}
+        {% elif enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch %}{% set priority = 50 %}
+        {% elif enable_flood_warning and is_flood_warning %}{% set priority = 60 %}
+        {% elif enable_winter_weather and is_winter_warning %}{% set priority = 70 %}
+        {% elif enable_wind_alerts and is_high_wind_warning %}{% set priority = 80 %}
+        {% elif enable_heat_alerts and is_excessive_heat_warning %}{% set priority = 90 %}
+        {% elif enable_flood_watch and is_flood_watch %}{% set priority = 100 %}
+        {% elif enable_winter_weather and is_winter %}{% set priority = 110 %}
+        {% elif enable_heat_alerts and is_heat %}{% set priority = 120 %}
+        {% elif enable_wind_alerts and is_wind %}{% set priority = 130 %}
+        {% elif enable_special_weather_statement and is_special %}{% set priority = 140 %}
+        {% elif enable_advisories and is_advisory %}{% set priority = 150 %}
+        {% elif enable_other_alerts and not known %}{% set priority = 900 %}
+        {% endif %}
+        {% if priority < ns.priority %}
+          {% set ns.priority = priority %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.priority }}
+
+  previous_matched_alert_signature: >-
+    {{ previous_matched_alert_priority | string }}|{{ previous_matched_alert_event | trim }}|{{ previous_matched_alert_headline | trim }}
 
   event_lc: "{{ matched_alert_event | lower }}"
 
@@ -958,12 +1222,18 @@ conditions:
          or enabled_helper == ''
          or is_state(enabled_helper, 'on') }}
 
-  # Only run when the alert count increases.
+  # Run when the highest-priority enabled alert is new, changed, or more serious.
+  # This avoids lower-priority alerts stealing the announcement and prevents a cooldown
+  # from blocking a more serious alert.
   - condition: template
     value_template: >
       {{ trigger.from_state is not none
          and trigger.to_state is not none
-         and trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}
+         and (
+           previous_matched_alert_event | trim == ''
+           or matched_alert_signature | trim != previous_matched_alert_signature | trim
+           or matched_alert_priority | int(999) < previous_matched_alert_priority | int(999)
+         ) }}
 
   # Make sure the alert list exists.
   - condition: template
