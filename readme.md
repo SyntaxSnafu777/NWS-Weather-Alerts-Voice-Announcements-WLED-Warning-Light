@@ -56,7 +56,7 @@ This blueprint expects the following Home Assistant entities or integrations:
 * Optional `input_boolean` helper toggle
 * Optional `media_player` entities for voice volume control
 * Optional local media file if using a custom preannounce sound
-* Optional Home Assistant Companion App notify services for push notifications
+* Optional Home Assistant Companion App notify entities for push notifications
 * Home Assistant 2024.6.0 or newer for blueprint input sections
 
 ## Blueprint Layout
@@ -304,13 +304,13 @@ A short MP3 or WAV file is usually best.
 
 ## Mobile Push Notifications
 
-The blueprint can send push notifications to one or more Home Assistant Companion App mobile devices.
+The blueprint can send push notifications to one or more Home Assistant notify entities, including mobile app notification entities.
 
 To use this feature:
 
 ```text
 Send Mobile Push Notifications: enabled
-Mobile Notify Services: select one or more phones/tablets
+Mobile Notify Entities: select one or more notify entities from the picker
 ```
 
 The notification title uses the alert event.
@@ -323,25 +323,13 @@ NWS Weather Alert: Tornado Warning
 
 The notification message uses the alert headline from the NWS alert.
 
-Mobile push notifications use Home Assistant notify services created by the Companion App. Your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
+For Home Assistant Companion App notifications, your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
 
-To find your notify service name:
-
-1. Go to **Developer Tools**.
-2. Open the **Actions** tab.
-3. Search for `notify.mobile_app`.
-4. Copy the service name for your device.
-
-Example:
+In current Home Assistant versions, mobile app notification targets may appear as `notify` entities that can be selected directly in the blueprint UI. Example entity names may look like:
 
 ```text
-notify.mobile_app_chris_iphone
-```
-
-For multiple devices, separate services with commas:
-
-```text
-notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+notify.mobile_app_your_phone
+notify.mobile_app_another_phone
 ```
 
 ## Voice Volume Control
@@ -466,19 +454,20 @@ media-source://media_source/local/weather-alert-tone.mp3
 
 Enables optional push notifications to selected Home Assistant Companion App mobile devices.
 
-### Mobile Notify Services
+### Mobile Notify Entities
 
-One or more notify services to receive push notifications.
+One or more notify entities to receive push notifications.
 
-Enter multiple services separated by commas.
+Select one or more notify entities from the entity picker.
 
-Example:
+Example entity names may look like:
 
 ```text
-notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+notify.mobile_app_your_phone
+notify.mobile_app_another_phone
 ```
 
-These services are created by the Home Assistant Companion App.
+These entities are created by integrations such as the Home Assistant Companion App.
 
 ### Set Voice Alert Volume
 
@@ -639,7 +628,7 @@ Use Preannounce Sound: enabled
 Custom Preannounce Media ID: blank
 
 Send Mobile Push Notifications: optional
-Mobile Notify Services: enter one or more notify services if enabled
+Mobile Notify Entities: select one or more notify entities if enabled
 
 Light Flash Mode: Alert colors - RGB/RGBW lights
 
@@ -858,12 +847,12 @@ If the custom sound does not play, clear **Custom Preannounce Media ID** and tes
 To test mobile push notifications:
 
 1. Enable **Send Mobile Push Notifications**.
-2. Select at least one device under **Mobile Notify Services**.
+2. Select at least one notify entity under **Mobile Notify Entities**.
 3. Run the fake Tornado Warning test.
 
 You should receive a Companion App push notification with the alert event as the title and the alert headline as the message.
 
-If the notification does not arrive, confirm that the device is connected through the Home Assistant Companion App and that notification permissions are allowed on the mobile device.
+If the notification does not arrive, confirm that the selected notify entity exists and the device is connected through the Home Assistant Companion App and that notification permissions are allowed on the mobile device.
 
 ### Testing Custom Alert Colors
 
@@ -947,23 +936,17 @@ Try clearing **Custom Preannounce Media ID**. If the default preannounce sound w
 
 ### Import/save error: Unknown device `{{ repeat.item }}`
 
-Older versions of this blueprint used a mobile device selector with a templated device action.
+Older versions of this blueprint used a templated device action for mobile notifications.
 
-Home Assistant does not allow templated `device_id` values in device actions, so the current version uses notify service names instead.
-
-Use **Mobile Notify Services** and enter values like:
-
-```text
-notify.mobile_app_chris_iphone
-```
+The current version avoids that problem by using selectable `notify` entities with `notify.send_message`.
 
 ### Mobile notification does not arrive
 
 Check that:
 
 * **Send Mobile Push Notifications** is enabled
-* At least one device is selected under **Mobile Notify Services**
-* The notify service exists and belongs to a device registered through the Home Assistant Companion App
+* At least one notify entity is selected under **Mobile Notify Entities**
+* The selected notify entity exists and belongs to a device registered through the Home Assistant Companion App
 * Notifications are allowed on the mobile device
 * The automation trace shows the mobile notification section running
 
@@ -1038,6 +1021,9 @@ Check that:
 * The automation is enabled
 
 ## Notes
+
+The Alert Type Filters section uses `mdi:alert-decagram` for better Home Assistant UI compatibility.
+
 
 Because this blueprint uses input sections, it requires Home Assistant 2024.6.0 or newer.
 

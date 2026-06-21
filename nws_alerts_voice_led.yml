@@ -179,15 +179,16 @@ blueprint:
           selector:
             boolean:
 
-        mobile_notify_services:
-          name: Mobile Notify Services
+        mobile_notify_entities:
+          name: Mobile Notify Entities
           description: >
-            Optional. Enter one or more notify services separated by commas.
-            Example: notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+            Optional. Select one or more notify entities, such as mobile app notification entities.
             These are only used when "Send Mobile Push Notifications" is enabled.
-          default: ""
+          default: []
           selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
     light_behavior:
       name: Light Behavior
@@ -258,7 +259,7 @@ blueprint:
 
     alert_type_filters:
       name: Alert Type Filters
-      icon: mdi:filter-alert
+      icon: mdi:alert-decagram
       collapsed: true
       description: >
         Choose which NWS alert categories should trigger this automation.
@@ -494,12 +495,7 @@ variables:
   preannounce_media_id: !input preannounce_media_id
 
   send_mobile_notifications: !input send_mobile_notifications
-  mobile_notify_services: !input mobile_notify_services
-  mobile_notify_service_list: >-
-    {{ mobile_notify_services.split(',')
-       | map('trim')
-       | reject('eq', '')
-       | list }}
+  mobile_notify_entities: !input mobile_notify_entities
 
   use_voice_volume: !input use_voice_volume
   voice_media_players: !input voice_media_players
@@ -821,19 +817,17 @@ actions:
           message: "{{ alert_message }}"
           preannounce: false
 
-  # Optionally send mobile push notifications using selected notify services.
+  # Optionally send mobile push notifications to selected notify entities.
   - if:
       - condition: template
         value_template: >
-          {{ send_mobile_notifications and mobile_notify_service_list | count > 0 }}
+          {{ send_mobile_notifications and mobile_notify_entities | count > 0 }}
     then:
-      - repeat:
-          for_each: "{{ mobile_notify_service_list }}"
-          sequence:
-            - action: "{{ repeat.item }}"
-              data:
-                title: "{{ alert_notification_title }}"
-                message: "{{ alert_notification_message }}"
+      - action: notify.send_message
+        data:
+          entity_id: !input mobile_notify_entities
+          title: "{{ alert_notification_title }}"
+          message: "{{ alert_notification_message }}"
 
   # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
   - if:
