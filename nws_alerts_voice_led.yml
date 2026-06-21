@@ -44,19 +44,171 @@ blueprint:
               domain: assist_satellite
               multiple: true
 
-        occupancy_sensor:
-          name: Occupancy / Presence Sensor
+    alert_zone_1:
+      name: Alert Zone 1
+      icon: mdi:map-marker-radius
+      collapsed: false
+      description: >
+        Optional warning light zone. Enable this zone, select its presence sensor, and select
+        one or more lights that should flash when this zone is occupied.
+      input:
+        zone1_enabled:
+          name: Enable Alert Zone 1
+          default: false
+          selector:
+            boolean:
+
+        zone1_presence_sensor:
+          name: Zone 1 Presence / Occupancy Sensor
           description: >
-            The occupancy or presence sensor that normally must be on before the warning lights flash.
-            Serious alerts can optionally bypass this sensor.
+            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
+            unless the alert is configured to bypass occupancy.
+          default: ""
           selector:
             entity:
               domain: binary_sensor
 
-        alert_lights:
-          name: Warning Light Entities
+        zone1_lights:
+          name: Zone 1 Warning Lights
           description: >
-            One or more light entities to flash. Supports WLED, RGB/RGBW bulbs, and basic smart bulbs.
+            One or more lights assigned to this zone.
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+    alert_zone_2:
+      name: Alert Zone 2
+      icon: mdi:map-marker-radius-outline
+      collapsed: true
+      description: >
+        Optional warning light zone. Enable this zone, select its presence sensor, and select
+        one or more lights that should flash when this zone is occupied.
+      input:
+        zone2_enabled:
+          name: Enable Alert Zone 2
+          default: false
+          selector:
+            boolean:
+
+        zone2_presence_sensor:
+          name: Zone 2 Presence / Occupancy Sensor
+          description: >
+            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
+            unless the alert is configured to bypass occupancy.
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+
+        zone2_lights:
+          name: Zone 2 Warning Lights
+          description: >
+            One or more lights assigned to this zone.
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+    alert_zone_3:
+      name: Alert Zone 3
+      icon: mdi:map-marker-radius-outline
+      collapsed: true
+      description: >
+        Optional warning light zone. Enable this zone, select its presence sensor, and select
+        one or more lights that should flash when this zone is occupied.
+      input:
+        zone3_enabled:
+          name: Enable Alert Zone 3
+          default: false
+          selector:
+            boolean:
+
+        zone3_presence_sensor:
+          name: Zone 3 Presence / Occupancy Sensor
+          description: >
+            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
+            unless the alert is configured to bypass occupancy.
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+
+        zone3_lights:
+          name: Zone 3 Warning Lights
+          description: >
+            One or more lights assigned to this zone.
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+    alert_zone_4:
+      name: Alert Zone 4
+      icon: mdi:map-marker-radius-outline
+      collapsed: true
+      description: >
+        Optional warning light zone. Enable this zone, select its presence sensor, and select
+        one or more lights that should flash when this zone is occupied.
+      input:
+        zone4_enabled:
+          name: Enable Alert Zone 4
+          default: false
+          selector:
+            boolean:
+
+        zone4_presence_sensor:
+          name: Zone 4 Presence / Occupancy Sensor
+          description: >
+            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
+            unless the alert is configured to bypass occupancy.
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+
+        zone4_lights:
+          name: Zone 4 Warning Lights
+          description: >
+            One or more lights assigned to this zone.
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+
+    alert_zone_5:
+      name: Alert Zone 5
+      icon: mdi:map-marker-radius-outline
+      collapsed: true
+      description: >
+        Optional warning light zone. Enable this zone, select its presence sensor, and select
+        one or more lights that should flash when this zone is occupied.
+      input:
+        zone5_enabled:
+          name: Enable Alert Zone 5
+          default: false
+          selector:
+            boolean:
+
+        zone5_presence_sensor:
+          name: Zone 5 Presence / Occupancy Sensor
+          description: >
+            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
+            unless the alert is configured to bypass occupancy.
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+
+        zone5_lights:
+          name: Zone 5 Warning Lights
+          description: >
+            One or more lights assigned to this zone.
+          default: []
           selector:
             entity:
               domain: light
@@ -217,7 +369,7 @@ blueprint:
         restore_scene_id:
           name: Temporary Light Restore Scene ID
           description: >
-            Internal scene ID used to snapshot/restore selected light states.
+            Base scene ID used to snapshot/restore enabled zone light states.
             Usually leave this alone.
           default: before_weather_alert_lights
           selector:
@@ -490,7 +642,22 @@ variables:
   use_enabled_helper: !input use_enabled_helper
   enabled_helper: !input enabled_helper
 
-  occupancy_sensor_entity: !input occupancy_sensor
+  zone1_enabled: !input zone1_enabled
+  zone1_presence_sensor: !input zone1_presence_sensor
+  zone1_lights: !input zone1_lights
+  zone2_enabled: !input zone2_enabled
+  zone2_presence_sensor: !input zone2_presence_sensor
+  zone2_lights: !input zone2_lights
+  zone3_enabled: !input zone3_enabled
+  zone3_presence_sensor: !input zone3_presence_sensor
+  zone3_lights: !input zone3_lights
+  zone4_enabled: !input zone4_enabled
+  zone4_presence_sensor: !input zone4_presence_sensor
+  zone4_lights: !input zone4_lights
+  zone5_enabled: !input zone5_enabled
+  zone5_presence_sensor: !input zone5_presence_sensor
+  zone5_lights: !input zone5_lights
+
 
   use_preannounce: !input use_preannounce
   custom_preannounce_media: !input custom_preannounce_media
@@ -719,8 +886,28 @@ variables:
        (bypass_occupancy_severe_thunderstorm_warning and 'severe thunderstorm warning' in event_lc) or
        (bypass_occupancy_flash_flood_warning and 'flash flood warning' in event_lc) }}
 
-  should_flash_lights: >-
-    {{ should_bypass_occupancy or is_state(occupancy_sensor_entity, 'on') }}
+  zone1_should_flash: >-
+    {{ zone1_enabled and zone1_lights | count > 0 and
+       (should_bypass_occupancy or is_state(zone1_presence_sensor, 'on')) }}
+
+  zone2_should_flash: >-
+    {{ zone2_enabled and zone2_lights | count > 0 and
+       (should_bypass_occupancy or is_state(zone2_presence_sensor, 'on')) }}
+
+  zone3_should_flash: >-
+    {{ zone3_enabled and zone3_lights | count > 0 and
+       (should_bypass_occupancy or is_state(zone3_presence_sensor, 'on')) }}
+
+  zone4_should_flash: >-
+    {{ zone4_enabled and zone4_lights | count > 0 and
+       (should_bypass_occupancy or is_state(zone4_presence_sensor, 'on')) }}
+
+  zone5_should_flash: >-
+    {{ zone5_enabled and zone5_lights | count > 0 and
+       (should_bypass_occupancy or is_state(zone5_presence_sensor, 'on')) }}
+
+  should_flash_any_zone: >-
+    {{ zone1_should_flash or zone2_should_flash or zone3_should_flash or zone4_should_flash or zone5_should_flash }}
 
   alert_message: >-
     National Weather Service alert.
@@ -759,11 +946,51 @@ conditions:
       {{ matched_alert_event | trim != '' }}
 
 actions:
-  # Snapshot selected warning lights before changing them.
-  - action: scene.create
-    data:
-      scene_id: "{{ restore_scene_id }}"
-      snapshot_entities: !input alert_lights
+  # Snapshot enabled zone lights before changing them.
+  - if:
+      - condition: template
+        value_template: "{{ zone1_enabled and zone1_lights | count > 0 }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: "{{ restore_scene_id }}_zone1"
+          snapshot_entities: !input zone1_lights
+
+  - if:
+      - condition: template
+        value_template: "{{ zone2_enabled and zone2_lights | count > 0 }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: "{{ restore_scene_id }}_zone2"
+          snapshot_entities: !input zone2_lights
+
+  - if:
+      - condition: template
+        value_template: "{{ zone3_enabled and zone3_lights | count > 0 }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: "{{ restore_scene_id }}_zone3"
+          snapshot_entities: !input zone3_lights
+
+  - if:
+      - condition: template
+        value_template: "{{ zone4_enabled and zone4_lights | count > 0 }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: "{{ restore_scene_id }}_zone4"
+          snapshot_entities: !input zone4_lights
+
+  - if:
+      - condition: template
+        value_template: "{{ zone5_enabled and zone5_lights | count > 0 }}"
+    then:
+      - action: scene.create
+        data:
+          scene_id: "{{ restore_scene_id }}_zone5"
+          snapshot_entities: !input zone5_lights
 
   # Optionally snapshot and set voice media_player volume.
   - if:
@@ -830,15 +1057,16 @@ actions:
           {{ send_mobile_notifications and mobile_notify_entities | count > 0 }}
     then:
       - action: notify.send_message
-        data:
+        target:
           entity_id: !input mobile_notify_entities
+        data:
           title: "{{ alert_notification_title }}"
           message: "{{ alert_notification_message }}"
 
-  # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
+  # Flash enabled zone lights if their zone is occupied or the alert bypasses occupancy.
   - if:
       - condition: template
-        value_template: "{{ should_flash_lights }}"
+        value_template: "{{ should_flash_any_zone }}"
     then:
       - choose:
           - conditions:
@@ -848,21 +1076,113 @@ actions:
               - repeat:
                   count: "{{ blink_count }}"
                   sequence:
-                    - action: light.turn_on
-                      target:
-                        entity_id: !input alert_lights
-                      data:
-                        brightness_pct: "{{ brightness_pct }}"
-                        transition: 0
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone1_should_flash }}"
+                      then:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input zone1_lights
+                          data:
+                            brightness_pct: "{{ brightness_pct }}"
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone2_should_flash }}"
+                      then:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input zone2_lights
+                          data:
+                            brightness_pct: "{{ brightness_pct }}"
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone3_should_flash }}"
+                      then:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input zone3_lights
+                          data:
+                            brightness_pct: "{{ brightness_pct }}"
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone4_should_flash }}"
+                      then:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input zone4_lights
+                          data:
+                            brightness_pct: "{{ brightness_pct }}"
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone5_should_flash }}"
+                      then:
+                        - action: light.turn_on
+                          target:
+                            entity_id: !input zone5_lights
+                          data:
+                            brightness_pct: "{{ brightness_pct }}"
+                            transition: 0
 
                     - delay:
                         milliseconds: "{{ blink_delay_ms }}"
 
-                    - action: light.turn_off
-                      target:
-                        entity_id: !input alert_lights
-                      data:
-                        transition: 0
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone1_should_flash }}"
+                      then:
+                        - action: light.turn_off
+                          target:
+                            entity_id: !input zone1_lights
+                          data:
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone2_should_flash }}"
+                      then:
+                        - action: light.turn_off
+                          target:
+                            entity_id: !input zone2_lights
+                          data:
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone3_should_flash }}"
+                      then:
+                        - action: light.turn_off
+                          target:
+                            entity_id: !input zone3_lights
+                          data:
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone4_should_flash }}"
+                      then:
+                        - action: light.turn_off
+                          target:
+                            entity_id: !input zone4_lights
+                          data:
+                            transition: 0
+
+                    - if:
+                        - condition: template
+                          value_template: "{{ zone5_should_flash }}"
+                      then:
+                        - action: light.turn_off
+                          target:
+                            entity_id: !input zone5_lights
+                          data:
+                            transition: 0
 
                     - delay:
                         milliseconds: "{{ blink_delay_ms }}"
@@ -871,30 +1191,162 @@ actions:
           - repeat:
               count: "{{ blink_count }}"
               sequence:
-                - action: light.turn_on
-                  target:
-                    entity_id: !input alert_lights
-                  data:
-                    brightness_pct: "{{ brightness_pct }}"
-                    rgb_color: "{{ alert_rgb }}"
-                    transition: 0
+                - if:
+                    - condition: template
+                      value_template: "{{ zone1_should_flash }}"
+                  then:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input zone1_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        rgb_color: "{{ alert_rgb }}"
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone2_should_flash }}"
+                  then:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input zone2_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        rgb_color: "{{ alert_rgb }}"
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone3_should_flash }}"
+                  then:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input zone3_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        rgb_color: "{{ alert_rgb }}"
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone4_should_flash }}"
+                  then:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input zone4_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        rgb_color: "{{ alert_rgb }}"
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone5_should_flash }}"
+                  then:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input zone5_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        rgb_color: "{{ alert_rgb }}"
+                        transition: 0
 
                 - delay:
                     milliseconds: "{{ blink_delay_ms }}"
 
-                - action: light.turn_off
-                  target:
-                    entity_id: !input alert_lights
-                  data:
-                    transition: 0
+                - if:
+                    - condition: template
+                      value_template: "{{ zone1_should_flash }}"
+                  then:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input zone1_lights
+                      data:
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone2_should_flash }}"
+                  then:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input zone2_lights
+                      data:
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone3_should_flash }}"
+                  then:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input zone3_lights
+                      data:
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone4_should_flash }}"
+                  then:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input zone4_lights
+                      data:
+                        transition: 0
+
+                - if:
+                    - condition: template
+                      value_template: "{{ zone5_should_flash }}"
+                  then:
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input zone5_lights
+                      data:
+                        transition: 0
 
                 - delay:
                     milliseconds: "{{ blink_delay_ms }}"
 
-  # Restore selected warning lights.
-  - action: scene.turn_on
-    target:
-      entity_id: "scene.{{ restore_scene_id }}"
+  # Restore enabled zone lights.
+  - if:
+      - condition: template
+        value_template: "{{ zone1_enabled and zone1_lights | count > 0 }}"
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ restore_scene_id }}_zone1"
+
+  - if:
+      - condition: template
+        value_template: "{{ zone2_enabled and zone2_lights | count > 0 }}"
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ restore_scene_id }}_zone2"
+
+  - if:
+      - condition: template
+        value_template: "{{ zone3_enabled and zone3_lights | count > 0 }}"
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ restore_scene_id }}_zone3"
+
+  - if:
+      - condition: template
+        value_template: "{{ zone4_enabled and zone4_lights | count > 0 }}"
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ restore_scene_id }}_zone4"
+
+  - if:
+      - condition: template
+        value_template: "{{ zone5_enabled and zone5_lights | count > 0 }}"
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ restore_scene_id }}_zone5"
 
   # Optionally restore voice media_player volume.
   - if:

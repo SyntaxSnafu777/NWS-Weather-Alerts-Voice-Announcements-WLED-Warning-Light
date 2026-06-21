@@ -2,20 +2,20 @@
 
 A configurable Home Assistant automation blueprint for National Weather Service alerts.
 
-This blueprint announces selected NWS alert types on one or more Home Assistant Voice / Assist satellite devices and can flash one or more warning lights, such as WLED LED strips, RGB/RGBW smart bulbs, or basic dimmable smart bulbs.
+This blueprint announces selected NWS alert types on one or more Home Assistant Voice / Assist satellite devices and can flash warning lights across up to five configurable alert zones, such as WLED LED strips, RGB/RGBW smart bulbs, or basic dimmable smart bulbs.
 
 It supports optional dashboard enable/disable control, alert-type filtering, serious-alert occupancy bypass, optional voice volume control, optional custom preannounce sounds, regular smart bulb compatibility, and automatic light state restore.
 
 ## Features
 
 * Announce National Weather Service alerts on one or more Home Assistant Voice / Assist satellites
-* Flash one or more Home Assistant `light` entities
+* Flash Home Assistant `light` entities across up to five alert zones
 * Supports WLED strips, RGB/RGBW smart bulbs, and basic dimmable smart bulbs
 * Select between alert-color flashing and brightness-only flashing
 * Select which alert types should trigger the automation
 * Optional helper toggle to enable or disable the automation from a dashboard
-* Optional occupancy or presence requirement before flashing lights
-* Serious alert bypass options for Tornado Warning, Severe Thunderstorm Warning, and Flash Flood Warning
+* Per-zone occupancy or presence requirement before flashing each zone's lights
+* Serious alert bypass options that can flash all enabled zone lights regardless of zone occupancy
 * Optional bypass for all enabled alert types
 * Optional default or custom preannounce sound before the voice announcement
 * Optional mobile push notifications to one or more Home Assistant Companion App devices
@@ -37,9 +37,9 @@ When a new NWS alert is issued:
 1. The selected voice assistants play an optional preannounce sound.
 2. The selected voice assistants announce the alert.
 3. Optional mobile push notifications are sent to selected phones or tablets.
-4. The selected warning lights flash.
-5. If the alert is not serious, the lights only flash when your selected occupancy sensor is active.
-6. If the alert is serious and bypass is enabled, the lights flash even if occupancy is not detected.
+4. Each enabled alert zone checks its assigned presence sensor.
+5. Occupied zones flash their assigned warning lights.
+6. If the alert is serious and bypass is enabled, all enabled zone lights flash even if occupancy is not detected.
 7. After the alert sequence, the lights return to their previous state.
 
 ## Requirements
@@ -52,7 +52,7 @@ This blueprint expects the following Home Assistant entities or integrations:
 * Optional WLED integration
 * Optional RGB/RGBW smart bulbs
 * Optional basic white/dimmable smart bulbs
-* Occupancy or presence binary sensor
+* One occupancy or presence binary sensor per enabled alert zone
 * Optional `input_boolean` helper toggle
 * Optional `media_player` entities for voice volume control
 * Optional local media file if using a custom preannounce sound
@@ -62,6 +62,24 @@ This blueprint expects the following Home Assistant entities or integrations:
 ## Blueprint Layout
 
 The blueprint inputs are organized into collapsible sections for easier setup.
+
+The main sections are:
+
+* Core Settings
+* Alert Zone 1
+* Alert Zone 2
+* Alert Zone 3
+* Alert Zone 4
+* Alert Zone 5
+* Enable / Disable Control
+* Voice, Audio & Preannounce
+* Mobile Push Notifications
+* Light Behavior
+* Alert Type Filters
+* Occupancy Bypass
+* Alert Colors
+
+Alert Zone 1 is visible by default. Zones 2 through 5 are collapsed by default.
 
 ## Recommended Helper Toggle
 
@@ -152,6 +170,47 @@ Winter / Snow / Ice Color: Cyan
 ```
 
 
+## Alert Zones
+
+This blueprint supports up to five alert zones.
+
+Each zone has:
+
+* Enable toggle
+* Presence / occupancy sensor
+* One or more warning lights
+
+Example setup:
+
+```text
+Alert Zone 1:
+  Presence Sensor: Office Presence
+  Warning Lights: Desk WLED, Office Lamp
+
+Alert Zone 2:
+  Presence Sensor: Bedroom Presence
+  Warning Lights: Bedroom Lamp
+
+Alert Zone 3:
+  Presence Sensor: Garage Motion
+  Warning Lights: Garage Light
+```
+
+Normal behavior:
+
+```text
+Zone presence detected = that zone's lights flash
+Zone presence not detected = that zone's lights do not flash
+```
+
+Serious alert bypass behavior:
+
+```text
+Bypass enabled for the alert type = all enabled zone lights flash
+```
+
+This lets a user have several lights across different areas while still tying each area to its own presence or motion sensor.
+
 ## Light Compatibility
 
 This blueprint is not limited to WLED.
@@ -206,16 +265,17 @@ The light will blink on and off at the configured brightness, but it will not ch
 
 ## Occupancy Logic
 
-The selected occupancy or presence sensor controls whether the warning lights flash.
+Each enabled alert zone has its own occupancy or presence sensor.
 
 Normal behavior:
 
 ```text
-Occupancy detected = lights flash
-Occupancy not detected = voice announcement only
+Zone 1 presence detected = Zone 1 lights flash
+Zone 2 presence detected = Zone 2 lights flash
+Zone 3 presence not detected = Zone 3 lights do not flash
 ```
 
-This is useful if you only want your desk lights, office lights, or bedroom LEDs to flash when someone is actually in that room.
+This is useful if you want lights in multiple rooms or areas to respond only when someone is actually present in that specific area.
 
 ## Serious Alert Occupancy Bypass
 
@@ -327,9 +387,9 @@ If your voice assistant does not expose a media player entity, leave volume cont
 
 ## Light Restore Behavior
 
-The blueprint snapshots the selected warning light entities before flashing them.
+The blueprint snapshots the enabled alert zone light entities before flashing them.
 
-After the flash sequence, it restores the previous light state using a temporary Home Assistant scene.
+After the flash sequence, it restores the previous light state for each enabled zone using temporary Home Assistant scenes.
 
 This should restore normal light state, brightness, color, and many standard light attributes.
 
@@ -461,30 +521,31 @@ Example values:
 
 Attempts to restore the previous media player volume after the alert announcement.
 
-### Occupancy / Presence Sensor
+### Alert Zones
 
-Binary sensor used to decide whether lights should flash.
+The blueprint supports up to five alert zones.
 
-Example entities:
+Each zone has:
 
-```yaml
-binary_sensor.office_occupancy
-binary_sensor.office_presence
-binary_sensor.desk_motion
+* Enable Alert Zone
+* Zone Presence / Occupancy Sensor
+* Zone Warning Lights
+
+Enable only the zones you want to use.
+
+Example:
+
+```text
+Enable Alert Zone 1: enabled
+Zone 1 Presence / Occupancy Sensor: binary_sensor.office_presence
+Zone 1 Warning Lights: light.desk_wled, light.office_lamp
+
+Enable Alert Zone 2: enabled
+Zone 2 Presence / Occupancy Sensor: binary_sensor.bedroom_presence
+Zone 2 Warning Lights: light.bedroom_lamp
 ```
 
-### Warning Light Entities
-
-One or more light entities to flash during the alert.
-
-Example entities:
-
-```yaml
-light.desk_wled
-light.office_led_strip
-light.bedroom_warning_light
-light.office_lamp
-```
+Zones with no selected lights will not flash.
 
 ### Light Flash Mode
 
@@ -517,7 +578,7 @@ These are only used when **Light Flash Mode** is set to **Alert colors - RGB/RGB
 
 ### Temporary Light Restore Scene ID
 
-Internal scene ID used to snapshot and restore selected warning lights.
+Base internal scene ID used to snapshot and restore enabled zone warning lights.
 
 Default:
 
@@ -587,6 +648,12 @@ icon: mdi:alert
 For most users with WLED or color-capable smart bulbs:
 
 ```text
+Enable Alert Zone 1: enabled
+Zone 1 Presence / Occupancy Sensor: your main room presence sensor
+Zone 1 Warning Lights: your WLED strip or color lights
+
+Optional: enable Alert Zones 2-5 for additional rooms or areas
+
 Use Enable Helper: enabled
 Enable Helper Entity: input_boolean.weather_alerts
 
@@ -776,6 +843,20 @@ Alerts:
     Description: This is only a test.
 ```
 
+### Testing Alert Zones
+
+To test alert zones:
+
+1. Enable at least one alert zone.
+2. Select a presence or occupancy sensor for that zone.
+3. Select one or more lights for that zone.
+4. Make sure the zone presence sensor is currently `on`, or test with a Tornado Warning while Tornado Warning occupancy bypass is enabled.
+5. Run the fake Tornado Warning test.
+
+To test multiple zones, enable more than one zone and use different presence sensors and lights for each zone.
+
+If a zone does not flash, check whether that zone is enabled, has at least one light selected, and either has presence detected or is being bypassed by a serious alert.
+
 ### Testing Light Flash Modes
 
 To test WLED or RGB bulbs, set **Light Flash Mode** to:
@@ -872,7 +953,7 @@ Common causes:
 * The NWS alert attribute name is not set correctly
 * The automation did not see the state increase from `0` to `1`
 * The selected Assist satellite entity is unavailable
-* The selected warning light entity is unavailable
+* The selected zone warning light entity is unavailable
 * The occupancy sensor is off and occupancy bypass is not enabled for that alert type
 * Light Flash Mode is set to alert colors but one of the selected lights does not support RGB color
 * The selected custom preannounce sound is invalid or inaccessible
@@ -929,10 +1010,10 @@ The Assist satellite entity handles announcements, while the media player entity
 
 Check that:
 
-* The selected light entities are available
-* The occupancy sensor is `on`
+* The selected zone light entities are available
+* The zone occupancy or presence sensor is `on`
 * Or the alert type is configured to bypass occupancy
-* The automation trace shows the light flashing section running
+* The automation trace shows the zone light flashing section running
 
 ### Custom alert color does not apply
 
