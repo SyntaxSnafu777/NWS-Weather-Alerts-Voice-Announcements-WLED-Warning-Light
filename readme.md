@@ -423,6 +423,200 @@ Blink Delay: 500 ms
 Flash Brightness: 100%
 ```
 
+## Testing Without an Active NWS Alert
+
+You can test the blueprint even when there are no active weather alerts by temporarily spoofing the NWS alert sensor from Home Assistant Developer Tools.
+
+This does not permanently change the real NWS integration. Home Assistant will overwrite the test state when the integration updates, reloads, or Home Assistant restarts.
+
+### Before Testing
+
+Make sure the automation created from this blueprint is enabled.
+
+If you enabled the optional helper toggle, make sure it is turned on.
+
+Example:
+
+```yaml
+input_boolean.weather_alerts
+```
+
+Also make sure your selected voice assistants and warning light entities are available.
+
+### Step 1: Set the NWS Sensor to No Alerts
+
+Go to:
+
+```text
+Developer Tools → States
+```
+
+Find your NWS alert sensor.
+
+Example:
+
+```yaml
+sensor.nws_alerts
+```
+
+Set **State** to:
+
+```text
+0
+```
+
+Set **State attributes** to:
+
+```yaml
+Alerts: []
+```
+
+Click **Set state**.
+
+This gives the automation a clean starting point.
+
+### Step 2: Trigger a Fake Tornado Warning
+
+Now set the same NWS alert sensor **State** to:
+
+```text
+1
+```
+
+Set **State attributes** to:
+
+```yaml
+Alerts:
+  - Event: Tornado Warning
+    Headline: TEST ONLY. Tornado Warning test for Home Assistant automation.
+    Description: This is only a test of the NWS alert voice and warning light blueprint.
+```
+
+Click **Set state**.
+
+The automation should trigger because the alert count changed from:
+
+```text
+0 → 1
+```
+
+If **Bypass Occupancy for Tornado Warning** is enabled, the warning lights should flash even if your selected occupancy sensor is off.
+
+### Test Other Alert Types
+
+To test other alert categories, first reset the sensor back to `0` with `Alerts: []`, then set it back to `1` with one of the examples below.
+
+#### Severe Thunderstorm Warning
+
+```yaml
+Alerts:
+  - Event: Severe Thunderstorm Warning
+    Headline: TEST ONLY. Severe Thunderstorm Warning test.
+    Description: This is only a test.
+```
+
+#### Severe Thunderstorm Watch
+
+```yaml
+Alerts:
+  - Event: Severe Thunderstorm Watch
+    Headline: TEST ONLY. Severe Thunderstorm Watch test.
+    Description: This is only a test.
+```
+
+#### Flash Flood Warning
+
+```yaml
+Alerts:
+  - Event: Flash Flood Warning
+    Headline: TEST ONLY. Flash Flood Warning test.
+    Description: This is only a test.
+```
+
+#### Flood Watch
+
+```yaml
+Alerts:
+  - Event: Flood Watch
+    Headline: TEST ONLY. Flood Watch test.
+    Description: This is only a test.
+```
+
+#### Winter Storm Warning
+
+```yaml
+Alerts:
+  - Event: Winter Storm Warning
+    Headline: TEST ONLY. Winter Storm Warning test.
+    Description: This is only a test.
+```
+
+#### Heat Advisory
+
+```yaml
+Alerts:
+  - Event: Heat Advisory
+    Headline: TEST ONLY. Heat Advisory test.
+    Description: This is only a test.
+```
+
+#### Special Weather Statement
+
+```yaml
+Alerts:
+  - Event: Special Weather Statement
+    Headline: TEST ONLY. Special Weather Statement test.
+    Description: This is only a test.
+```
+
+### Reset After Testing
+
+After testing, set the NWS alert sensor back to:
+
+```text
+0
+```
+
+with attributes:
+
+```yaml
+Alerts: []
+```
+
+You can also reload the NWS Alerts integration or restart Home Assistant to let the real integration state take back over.
+
+### Testing Notes
+
+The blueprint only triggers when the alert count increases.
+
+Examples:
+
+```text
+0 → 1 = runs
+1 → 2 = runs
+2 → 1 = does not run
+1 → 0 = does not run
+```
+
+For repeated tests, always reset the sensor to `0` first, then set it back to `1`.
+
+### If the Test Does Not Work
+
+Open the automation and check **Traces**.
+
+Common causes:
+
+* The optional helper toggle is off
+* The selected test alert type is disabled in the blueprint settings
+* The NWS alert attribute name is not set correctly
+* The automation did not see the state increase from `0` to `1`
+* The selected Assist satellite entity is unavailable
+* The selected warning light entity is unavailable
+* The occupancy sensor is off and occupancy bypass is not enabled for that alert type
+
+For the easiest first test, use **Tornado Warning** because the blueprint defaults to bypassing occupancy for Tornado Warnings.
+
+
 ## Troubleshooting
 
 ### No voice announcement
