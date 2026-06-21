@@ -1468,6 +1468,13 @@ conditions:
          or enabled_helper == ''
          or is_state(enabled_helper, 'on') }}
 
+  # Do not run when the NWS alert count is zero.
+  # This prevents false alerts if the alert attributes remain populated during a 1 -> 0 reset.
+  - condition: template
+    value_template: >
+      {{ trigger.to_state is not none
+         and trigger.to_state.state | int(0) > 0 }}
+
   # Run when the highest-priority enabled alert is new, changed, or more serious.
   # This avoids lower-priority alerts stealing the announcement and prevents a cooldown
   # from blocking a more serious alert.
