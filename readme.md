@@ -56,7 +56,7 @@ This blueprint expects the following Home Assistant entities or integrations:
 * Optional `input_boolean` helper toggle
 * Optional `media_player` entities for voice volume control
 * Optional local media file if using a custom preannounce sound
-* Optional Home Assistant Companion App mobile devices for push notifications
+* Optional Home Assistant Companion App notify services for push notifications
 * Home Assistant 2024.6.0 or newer for blueprint input sections
 
 ## Blueprint Layout
@@ -310,7 +310,7 @@ To use this feature:
 
 ```text
 Send Mobile Push Notifications: enabled
-Mobile Notification Devices: select one or more phones/tablets
+Mobile Notify Services: select one or more phones/tablets
 ```
 
 The notification title uses the alert event.
@@ -323,7 +323,26 @@ NWS Weather Alert: Tornado Warning
 
 The notification message uses the alert headline from the NWS alert.
 
-Mobile push notifications use the Home Assistant Companion App mobile device integration. Your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
+Mobile push notifications use Home Assistant notify services created by the Companion App. Your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
+
+To find your notify service name:
+
+1. Go to **Developer Tools**.
+2. Open the **Actions** tab.
+3. Search for `notify.mobile_app`.
+4. Copy the service name for your device.
+
+Example:
+
+```text
+notify.mobile_app_chris_iphone
+```
+
+For multiple devices, separate services with commas:
+
+```text
+notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+```
 
 ## Voice Volume Control
 
@@ -447,11 +466,19 @@ media-source://media_source/local/weather-alert-tone.mp3
 
 Enables optional push notifications to selected Home Assistant Companion App mobile devices.
 
-### Mobile Notification Devices
+### Mobile Notify Services
 
-One or more mobile devices to receive push notifications.
+One or more notify services to receive push notifications.
 
-These devices must be registered through the Home Assistant Companion App.
+Enter multiple services separated by commas.
+
+Example:
+
+```text
+notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+```
+
+These services are created by the Home Assistant Companion App.
 
 ### Set Voice Alert Volume
 
@@ -612,7 +639,7 @@ Use Preannounce Sound: enabled
 Custom Preannounce Media ID: blank
 
 Send Mobile Push Notifications: optional
-Mobile Notification Devices: select one or more phones/tablets if enabled
+Mobile Notify Services: enter one or more notify services if enabled
 
 Light Flash Mode: Alert colors - RGB/RGBW lights
 
@@ -831,7 +858,7 @@ If the custom sound does not play, clear **Custom Preannounce Media ID** and tes
 To test mobile push notifications:
 
 1. Enable **Send Mobile Push Notifications**.
-2. Select at least one device under **Mobile Notification Devices**.
+2. Select at least one device under **Mobile Notify Services**.
 3. Run the fake Tornado Warning test.
 
 You should receive a Companion App push notification with the alert event as the title and the alert headline as the message.
@@ -918,13 +945,25 @@ Check that:
 
 Try clearing **Custom Preannounce Media ID**. If the default preannounce sound works, the issue is likely the custom media ID or media file.
 
+### Import/save error: Unknown device `{{ repeat.item }}`
+
+Older versions of this blueprint used a mobile device selector with a templated device action.
+
+Home Assistant does not allow templated `device_id` values in device actions, so the current version uses notify service names instead.
+
+Use **Mobile Notify Services** and enter values like:
+
+```text
+notify.mobile_app_chris_iphone
+```
+
 ### Mobile notification does not arrive
 
 Check that:
 
 * **Send Mobile Push Notifications** is enabled
-* At least one device is selected under **Mobile Notification Devices**
-* The selected device is registered through the Home Assistant Companion App
+* At least one device is selected under **Mobile Notify Services**
+* The notify service exists and belongs to a device registered through the Home Assistant Companion App
 * Notifications are allowed on the mobile device
 * The automation trace shows the mobile notification section running
 

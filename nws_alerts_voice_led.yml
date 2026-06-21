@@ -179,16 +179,15 @@ blueprint:
           selector:
             boolean:
 
-        mobile_notify_devices:
-          name: Mobile Notification Devices
+        mobile_notify_services:
+          name: Mobile Notify Services
           description: >
-            Optional. Select one or more Home Assistant Companion App mobile devices to receive
-            push notifications. These are only used when "Send Mobile Push Notifications" is enabled.
-          default: []
+            Optional. Enter one or more notify services separated by commas.
+            Example: notify.mobile_app_chris_iphone, notify.mobile_app_shayla_iphone
+            These are only used when "Send Mobile Push Notifications" is enabled.
+          default: ""
           selector:
-            device:
-              integration: mobile_app
-              multiple: true
+            text:
 
     light_behavior:
       name: Light Behavior
@@ -495,7 +494,12 @@ variables:
   preannounce_media_id: !input preannounce_media_id
 
   send_mobile_notifications: !input send_mobile_notifications
-  mobile_notify_devices: !input mobile_notify_devices
+  mobile_notify_services: !input mobile_notify_services
+  mobile_notify_service_list: >-
+    {{ mobile_notify_services.split(',')
+       | map('trim')
+       | reject('eq', '')
+       | list }}
 
   use_voice_volume: !input use_voice_volume
   voice_media_players: !input voice_media_players
@@ -817,20 +821,19 @@ actions:
           message: "{{ alert_message }}"
           preannounce: false
 
-  # Optionally send mobile push notifications to selected Companion App devices.
+  # Optionally send mobile push notifications using selected notify services.
   - if:
       - condition: template
         value_template: >
-          {{ send_mobile_notifications and mobile_notify_devices | count > 0 }}
+          {{ send_mobile_notifications and mobile_notify_service_list | count > 0 }}
     then:
       - repeat:
-          for_each: !input mobile_notify_devices
+          for_each: "{{ mobile_notify_service_list }}"
           sequence:
-            - device_id: "{{ repeat.item }}"
-              domain: mobile_app
-              type: notify
-              title: "{{ alert_notification_title }}"
-              message: "{{ alert_notification_message }}"
+            - action: "{{ repeat.item }}"
+              data:
+                title: "{{ alert_notification_title }}"
+                message: "{{ alert_notification_message }}"
 
   # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
   - if:
