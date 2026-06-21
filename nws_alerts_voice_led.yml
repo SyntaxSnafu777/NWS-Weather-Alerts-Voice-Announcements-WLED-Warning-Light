@@ -1,0 +1,242 @@
+blueprint:
+  name: NWS Alerts - Voice Announcement and WLED Flash
+  description: >
+    Announces new NWS alerts on Home Assistant Voice satellites and flashes a WLED light
+    when an occupancy sensor is active. Optionally uses an input_boolean helper as a master
+    enable/disable switch and restores the WLED light state afterward.
+  domain: automation
+
+  input:
+    nws_alert_sensor:
+      name: NWS Alert Sensor
+      description: The NWS Alerts sensor whose state is the active alert count.
+      selector:
+        entity:
+          domain: sensor
+
+    use_enabled_helper:
+      name: Use Enable Helper
+      description: >
+        Enable this if you want a helper toggle to control whether weather alerts run.
+      default: false
+      selector:
+        boolean:
+
+    enabled_helper:
+      name: Enable Helper Entity
+      description: >
+        Optional. Select your helper toggle, such as input_boolean.weather_alerts.
+        This is only used when "Use Enable Helper" is turned on.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+    office_occupancy_sensor:
+      name: Office Occupancy Sensor
+      description: The occupancy/presence sensor that must be on before the WLED strip flashes.
+      selector:
+        entity:
+          domain: binary_sensor
+
+    wled_light:
+      name: WLED Light
+      description: The WLED light strip to flash.
+      selector:
+        entity:
+          domain: light
+
+    voice_satellites:
+      name: Voice Assist Satellites
+      description: Home Assistant Voice / Assist satellite entities to announce on.
+      selector:
+        entity:
+          domain: assist_satellite
+          multiple: true
+
+    alert_attribute:
+      name: Alert List Attribute
+      description: >
+        Attribute on the NWS sensor that contains the alert list. For the NWS Alerts integration
+        this is commonly "Alerts".
+      default: Alerts
+      selector:
+        text:
+
+    restore_scene_id:
+      name: Temporary Restore Scene ID
+      description: >
+        Internal scene ID used to snapshot/restore the WLED state. Usually leave this alone.
+      default: before_weather_alerts_wled
+      selector:
+        text:
+
+    blink_count:
+      name: Blink Count
+      description: Number of on/off blinks.
+      default: 8
+      selector:
+        number:
+          min: 1
+          max: 30
+          step: 1
+          mode: slider
+
+    blink_delay_ms:
+      name: Blink Delay
+      description: Delay between on/off changes in milliseconds.
+      default: 500
+      selector:
+        number:
+          min: 100
+          max: 3000
+          step: 100
+          mode: slider
+          unit_of_measurement: ms
+
+    brightness_pct:
+      name: Flash Brightness
+      description: Brightness percentage while flashing.
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: "%"
+
+mode: queued
+max: 10
+
+triggers:
+  - trigger: state
+    entity_id: !input nws_alert_sensor
+
+variables:
+  nws_sensor: !input nws_alert_sensor
+  use_enabled_helper: !input use_enabled_helper
+  enabled_helper: !input enabled_helper
+  alert_attr: !input alert_attribute
+  restore_scene_id: !input restore_scene_id
+  blink_count: !input blink_count
+  blink_delay_ms: !input blink_delay_ms
+  brightness_pct: !input brightness_pct
+
+  alerts: "{{ state_attr(nws_sensor, alert_attr) }}"
+
+  alert_event: >
+    {% if alerts is not none and alerts | count > 0 %}
+      {{ alerts[0].Event
+         | default(alerts[0].event, true)
+         | default(alerts[0].event_name, true)
+         | default('Weather Alert', true) }}
+    {% else %}
+      Weather Alert
+    {% endif %}
+
+  alert_headline: >
+    {% if alerts is not none and alerts | count > 0 %}
+      {{ alerts[0].Headline
+         | default(alerts[0].headline, true)
+         | default(alerts[0].Title, true)
+         | default(alerts[0].title, true)
+         | default('There is an active National Weather Service alert.', true) }}
+    {% else %}
+      There is an active National Weather Service alert.
+    {% endif %}
+
+  event_lc: "{{ alert_event | lower }}"
+
+  alert_message: >
+    National Weather Service alert.
+    {{ alert_event }}.
+    {{ alert_headline }}
+
+  alert_rgb: >
+    {% if 'tornado warning' in event_lc %}
+      [255, 0, 255]
+    {% elif 'tornado watch' in event_lc %}
+      [255, 128, 0]
+    {% elif 'severe thunderstorm warning' in event_lc %}
+      [255, 0, 0]
+    {% elif 'severe thunderstorm watch' in event_lc %}
+      [255, 255, 0]
+    {% elif 'flash flood' in event_lc or 'flood warning' in event_lc %}
+      [0, 0, 255]
+    {% elif 'winter storm' in event_lc or 'snow' in event_lc or 'ice' in event_lc %}
+      [0, 255, 255]
+    {% else %}
+      [255, 255, 255]
+    {% endif %}
+
+conditions:
+  # Optional master enable/disable helper.
+  # If Use Enable Helper is off, this condition passes.
+  # If Use Enable Helper is on, the selected helper must be on.
+  - condition: template
+    value_template: >
+      {{ not use_enabled_helper
+         or enabled_helper == ''
+         or is_state(enabled_helper, 'on') }}
+
+  # Only run when the alert count increases.
+  # This prevents alerts from firing when an alert expires/decreases.
+  - condition: template
+    value_template: >
+      {{ trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}
+
+  # Make sure the alert list actually exists.
+  - condition: template
+    value_template: >
+      {{ alerts is not none and alerts | count > 0 }}
+
+actions:
+  # Snapshot current WLED state before touching it.
+  - action: scene.create
+    data:
+      scene_id: "{{ restore_scene_id }}"
+      snapshot_entities:
+        - !input wled_light
+
+  # Announce on HA Voice / Assist satellites.
+  - action: assist_satellite.announce
+    target:
+      entity_id: !input voice_satellites
+    data:
+      message: "{{ alert_message }}"
+      preannounce: true
+
+  # Flash WLED only if office occupancy/presence is active.
+  - if:
+      - condition: state
+        entity_id: !input office_occupancy_sensor
+        state: "on"
+    then:
+      - repeat:
+          count: "{{ blink_count }}"
+          sequence:
+            - action: light.turn_on
+              target:
+                entity_id: !input wled_light
+              data:
+                brightness_pct: "{{ brightness_pct }}"
+                rgb_color: "{{ alert_rgb }}"
+                transition: 0
+
+            - delay:
+                milliseconds: "{{ blink_delay_ms }}"
+
+            - action: light.turn_off
+              target:
+                entity_id: !input wled_light
+              data:
+                transition: 0
+
+            - delay:
+                milliseconds: "{{ blink_delay_ms }}"
+
+  # Restore previous WLED state.
+  - action: scene.turn_on
+    target:
+      entity_id: "scene.{{ restore_scene_id }}"
