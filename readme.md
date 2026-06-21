@@ -199,6 +199,7 @@ Alert Zone 3:
 Normal behavior:
 
 ```text
+Zone has no presence sensor selected = that zone is treated as always occupied
 Zone presence detected = that zone's lights flash
 Zone presence not detected = that zone's lights do not flash
 ```
@@ -209,7 +210,7 @@ Serious alert bypass behavior:
 Bypass enabled for the alert type = all enabled zone lights flash
 ```
 
-This lets a user have several lights across different areas while still tying each area to its own presence or motion sensor.
+This lets a user have several lights across different areas while still tying each area to its own presence or motion sensor. It also lets a user create a simple always-active light zone by leaving the zone presence sensor blank.
 
 ## Light Compatibility
 
@@ -263,19 +264,28 @@ light.basement_smart_bulb
 
 The light will blink on and off at the configured brightness, but it will not change alert colors.
 
+### Zones Without Presence Sensors
+
+If an enabled alert zone has lights selected but no presence sensor selected, that zone is treated as always occupied.
+
+This is useful for always-active warning lights, common areas, or users who do not use presence sensors.
+
 ## Occupancy Logic
 
-Each enabled alert zone has its own occupancy or presence sensor.
+Each enabled alert zone can have its own occupancy or presence sensor.
+
+A presence sensor is optional for each zone.
 
 Normal behavior:
 
 ```text
+Zone has no presence sensor selected = zone is treated as always occupied
 Zone 1 presence detected = Zone 1 lights flash
 Zone 2 presence detected = Zone 2 lights flash
 Zone 3 presence not detected = Zone 3 lights do not flash
 ```
 
-This is useful if you want lights in multiple rooms or areas to respond only when someone is actually present in that specific area.
+This is useful if you want lights in multiple rooms or areas to respond only when someone is actually present in that specific area. It also allows simple always-active zones when no presence sensor is selected.
 
 ## Serious Alert Occupancy Bypass
 
@@ -528,10 +538,12 @@ The blueprint supports up to five alert zones.
 Each zone has:
 
 * Enable Alert Zone
-* Zone Presence / Occupancy Sensor
+* Optional Zone Presence / Occupancy Sensor
 * Zone Warning Lights
 
 Enable only the zones you want to use.
+
+If a zone's presence sensor is left blank, that zone is treated as always occupied.
 
 Example:
 
@@ -848,14 +860,13 @@ Alerts:
 To test alert zones:
 
 1. Enable at least one alert zone.
-2. Select a presence or occupancy sensor for that zone.
-3. Select one or more lights for that zone.
-4. Make sure the zone presence sensor is currently `on`, or test with a Tornado Warning while Tornado Warning occupancy bypass is enabled.
-5. Run the fake Tornado Warning test.
+2. Select one or more lights for that zone.
+3. Either leave the zone presence sensor blank, make sure the zone presence sensor is currently `on`, or test with a Tornado Warning while Tornado Warning occupancy bypass is enabled.
+4. Run the fake Tornado Warning test.
 
 To test multiple zones, enable more than one zone and use different presence sensors and lights for each zone.
 
-If a zone does not flash, check whether that zone is enabled, has at least one light selected, and either has presence detected or is being bypassed by a serious alert.
+If a zone does not flash, check whether that zone is enabled, has at least one light selected, and either has no presence sensor selected, has presence detected, or is being bypassed by a serious alert.
 
 ### Testing Light Flash Modes
 
@@ -1011,7 +1022,7 @@ The Assist satellite entity handles announcements, while the media player entity
 Check that:
 
 * The selected zone light entities are available
-* The zone occupancy or presence sensor is `on`
+* The zone occupancy or presence sensor is `on`, or no zone presence sensor is selected
 * Or the alert type is configured to bypass occupancy
 * The automation trace shows the zone light flashing section running
 

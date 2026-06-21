@@ -61,8 +61,10 @@ blueprint:
         zone1_presence_sensor:
           name: Zone 1 Presence / Occupancy Sensor
           description: >
-            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
-            unless the alert is configured to bypass occupancy.
+            Optional. Presence or occupancy sensor for this zone. If left blank, this zone is
+            treated as always occupied and its lights can flash whenever a matching alert triggers.
+            If selected, zone lights flash when this sensor is on, unless the alert is configured
+            to bypass occupancy.
           default: ""
           selector:
             entity:
@@ -95,8 +97,10 @@ blueprint:
         zone2_presence_sensor:
           name: Zone 2 Presence / Occupancy Sensor
           description: >
-            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
-            unless the alert is configured to bypass occupancy.
+            Optional. Presence or occupancy sensor for this zone. If left blank, this zone is
+            treated as always occupied and its lights can flash whenever a matching alert triggers.
+            If selected, zone lights flash when this sensor is on, unless the alert is configured
+            to bypass occupancy.
           default: ""
           selector:
             entity:
@@ -129,8 +133,10 @@ blueprint:
         zone3_presence_sensor:
           name: Zone 3 Presence / Occupancy Sensor
           description: >
-            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
-            unless the alert is configured to bypass occupancy.
+            Optional. Presence or occupancy sensor for this zone. If left blank, this zone is
+            treated as always occupied and its lights can flash whenever a matching alert triggers.
+            If selected, zone lights flash when this sensor is on, unless the alert is configured
+            to bypass occupancy.
           default: ""
           selector:
             entity:
@@ -163,8 +169,10 @@ blueprint:
         zone4_presence_sensor:
           name: Zone 4 Presence / Occupancy Sensor
           description: >
-            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
-            unless the alert is configured to bypass occupancy.
+            Optional. Presence or occupancy sensor for this zone. If left blank, this zone is
+            treated as always occupied and its lights can flash whenever a matching alert triggers.
+            If selected, zone lights flash when this sensor is on, unless the alert is configured
+            to bypass occupancy.
           default: ""
           selector:
             entity:
@@ -197,8 +205,10 @@ blueprint:
         zone5_presence_sensor:
           name: Zone 5 Presence / Occupancy Sensor
           description: >
-            Presence or occupancy sensor for this zone. Zone lights flash when this sensor is on,
-            unless the alert is configured to bypass occupancy.
+            Optional. Presence or occupancy sensor for this zone. If left blank, this zone is
+            treated as always occupied and its lights can flash whenever a matching alert triggers.
+            If selected, zone lights flash when this sensor is on, unless the alert is configured
+            to bypass occupancy.
           default: ""
           selector:
             entity:
@@ -888,23 +898,43 @@ variables:
 
   zone1_should_flash: >-
     {{ zone1_enabled and zone1_lights | count > 0 and
-       (should_bypass_occupancy or is_state(zone1_presence_sensor, 'on')) }}
+       (
+         should_bypass_occupancy
+         or zone1_presence_sensor == ''
+         or is_state(zone1_presence_sensor, 'on')
+       ) }}
 
   zone2_should_flash: >-
     {{ zone2_enabled and zone2_lights | count > 0 and
-       (should_bypass_occupancy or is_state(zone2_presence_sensor, 'on')) }}
+       (
+         should_bypass_occupancy
+         or zone2_presence_sensor == ''
+         or is_state(zone2_presence_sensor, 'on')
+       ) }}
 
   zone3_should_flash: >-
     {{ zone3_enabled and zone3_lights | count > 0 and
-       (should_bypass_occupancy or is_state(zone3_presence_sensor, 'on')) }}
+       (
+         should_bypass_occupancy
+         or zone3_presence_sensor == ''
+         or is_state(zone3_presence_sensor, 'on')
+       ) }}
 
   zone4_should_flash: >-
     {{ zone4_enabled and zone4_lights | count > 0 and
-       (should_bypass_occupancy or is_state(zone4_presence_sensor, 'on')) }}
+       (
+         should_bypass_occupancy
+         or zone4_presence_sensor == ''
+         or is_state(zone4_presence_sensor, 'on')
+       ) }}
 
   zone5_should_flash: >-
     {{ zone5_enabled and zone5_lights | count > 0 and
-       (should_bypass_occupancy or is_state(zone5_presence_sensor, 'on')) }}
+       (
+         should_bypass_occupancy
+         or zone5_presence_sensor == ''
+         or is_state(zone5_presence_sensor, 'on')
+       ) }}
 
   should_flash_any_zone: >-
     {{ zone1_should_flash or zone2_should_flash or zone3_should_flash or zone4_should_flash or zone5_should_flash }}
