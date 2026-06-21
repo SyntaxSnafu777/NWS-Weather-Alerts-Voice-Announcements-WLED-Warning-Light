@@ -28,6 +28,7 @@ It supports optional dashboard enable/disable control, alert-type filtering, ser
 * Organized blueprint UI with collapsible sections for advanced options
 * Prioritizes active alerts so the most serious enabled alert is announced first
 * Runs when the highest-priority enabled alert is new, changed, or becomes more serious
+* Optional time-based alert suppression / quiet hours with breakthrough alert types
 
 ## Example Use Case
 
@@ -73,6 +74,7 @@ The main sections are:
 * Alert Zone 4
 * Alert Zone 5
 * Enable / Disable Control
+* Alert Suppression / Quiet Hours
 * Voice, Audio & Preannounce
 * Mobile Push Notifications
 * Light Behavior
@@ -308,6 +310,59 @@ Bypass Occupancy for Flash Flood Warning: optional
 Bypass Occupancy for All Enabled Alerts: disabled
 ```
 
+## Alert Suppression / Quiet Hours
+
+The blueprint can suppress alerts during a configured time window, such as overnight or during normal sleeping hours.
+
+During the suppression window, the blueprint only considers alert types that are allowed to break through suppression.
+
+Example:
+
+```text
+Use Alert Suppression / Quiet Hours: enabled
+Suppression Start Time: 22:00
+Suppression End Time: 07:00
+
+Allow Tornado Warning During Suppression: enabled
+Allow Flash Flood Warning During Suppression: disabled
+Allow Severe Thunderstorm Warning During Suppression: optional
+```
+
+With this setup:
+
+```text
+10:30 PM Flash Flood Warning = suppressed
+10:30 PM Tornado Warning = allowed
+10:30 PM Flash Flood Warning + Tornado Warning = Tornado Warning is selected and allowed
+```
+
+The suppression window can cross midnight.
+
+Example:
+
+```text
+Start: 22:00
+End: 07:00
+```
+
+This means suppression is active from 10:00 PM through 7:00 AM.
+
+If the start time and end time are the same, suppression is treated as disabled to avoid accidentally suppressing alerts all day.
+
+### Breakthrough Alert Types
+
+Each alert category can be allowed or blocked during the suppression window.
+
+By default, Tornado Warning is allowed to break through suppression. Other alert types are disabled by default during suppression and can be enabled if desired.
+
+Alert suppression affects the whole automation:
+
+* Voice announcements
+* Mobile notifications
+* Warning lights
+
+If an alert is suppressed, none of those actions run for that alert.
+
 ## Voice Announcements
 
 The blueprint uses Home Assistant Voice / Assist satellite entities for announcements.
@@ -335,6 +390,11 @@ The blueprint can play a preannounce sound before the voice announcement.
 You have three options:
 
 ```text
+Use Alert Suppression / Quiet Hours: optional
+Suppression Start Time: 22:00
+Suppression End Time: 07:00
+Allow Tornado Warning During Suppression: enabled
+
 Use Preannounce Sound: enabled
 Custom Preannounce Sound: empty
 ```
@@ -342,6 +402,11 @@ Custom Preannounce Sound: empty
 This uses Home Assistant's default Assist satellite preannounce sound.
 
 ```text
+Use Alert Suppression / Quiet Hours: optional
+Suppression Start Time: 22:00
+Suppression End Time: 07:00
+Allow Tornado Warning During Suppression: enabled
+
 Use Preannounce Sound: enabled
 Custom Preannounce Sound: select an audio file from Home Assistant Media
 ```
@@ -410,7 +475,7 @@ If your WLED strip was running a complex WLED preset or effect, Home Assistant m
 
 If multiple NWS alerts are active at the same time, the blueprint does not simply use the first alert in the NWS alert list.
 
-Instead, it evaluates all active alerts, ignores alert types that are disabled in the blueprint settings, assigns each matching alert a priority, and uses the highest-priority enabled alert for:
+Instead, it evaluates all active alerts, ignores alert types that are disabled in the blueprint settings, ignores alert types blocked by alert suppression / quiet hours, assigns each remaining matching alert a priority, and uses the highest-priority enabled alert for:
 
 * Voice announcement
 * Mobile notification
@@ -511,6 +576,44 @@ Example:
 
 ```yaml
 input_boolean.weather_alerts
+```
+
+### Alert Suppression / Quiet Hours
+
+Enables optional time-based suppression.
+
+When enabled, only selected alert categories are allowed to break through during the configured time window.
+
+### Suppression Start Time
+
+Time when suppression begins.
+
+Example:
+
+```text
+22:00
+```
+
+### Suppression End Time
+
+Time when suppression ends.
+
+Example:
+
+```text
+07:00
+```
+
+### Suppression Breakthrough Alert Types
+
+Each alert category has an option to allow it during the suppression window.
+
+Examples:
+
+```text
+Allow Tornado Warning During Suppression: enabled
+Allow Flash Flood Warning During Suppression: disabled
+Allow Severe Thunderstorm Warning During Suppression: optional
 ```
 
 ### Voice Assist Satellites
@@ -716,6 +819,11 @@ Optional: enable Alert Zones 2-5 for additional rooms or areas
 Use Enable Helper: enabled
 Enable Helper Entity: input_boolean.weather_alerts
 
+Use Alert Suppression / Quiet Hours: optional
+Suppression Start Time: 22:00
+Suppression End Time: 07:00
+Allow Tornado Warning During Suppression: enabled
+
 Use Preannounce Sound: enabled
 Custom Preannounce Sound: empty
 
@@ -902,6 +1010,37 @@ Alerts:
     Description: This is only a test.
 ```
 
+### Testing Alert Suppression / Quiet Hours
+
+To test alert suppression:
+
+1. Enable **Use Alert Suppression / Quiet Hours**.
+2. Set the suppression start and end time so the current time is inside the suppression window.
+3. Disable **Allow Flash Flood Warning During Suppression**.
+4. Run a fake Flash Flood Warning test.
+
+The automation should not run.
+
+Then test breakthrough behavior:
+
+1. Keep the current time inside the suppression window.
+2. Enable **Allow Tornado Warning During Suppression**.
+3. Run a fake Tornado Warning test.
+
+The automation should run.
+
+To test priority and suppression together, use multiple fake alerts:
+
+```yaml
+Alerts:
+  - Event: Flash Flood Warning
+    Headline: TEST ONLY. Flash Flood Warning test.
+  - Event: Tornado Warning
+    Headline: TEST ONLY. Tornado Warning test.
+```
+
+If Tornado Warning is allowed during suppression and Flash Flood Warning is not, the blueprint should select and run the Tornado Warning.
+
 ### Testing Alert Zones
 
 To test alert zones:
@@ -1025,6 +1164,16 @@ For the easiest first test, use **Tornado Warning** because the blueprint defaul
 
 ## Troubleshooting
 
+### Alert is suppressed during quiet hours
+
+Check that:
+
+* **Use Alert Suppression / Quiet Hours** is configured as intended
+* The current time is outside the suppression window, or
+* The alert type is enabled as a breakthrough alert during suppression
+
+If the current time is inside the suppression window and the alert type is not allowed to break through, the automation will not run.
+
 ### No voice announcement
 
 Check that:
@@ -1125,6 +1274,7 @@ Check that:
 
 * The highest-priority enabled alert is new, changed, or more serious than the previous selected alert
 * Your selected alert type is enabled in the blueprint
+* Alert suppression / quiet hours is not blocking the selected alert type
 * The optional helper is on, if enabled
 * The alert list attribute contains at least one active alert
 * The automation is enabled
@@ -1136,5 +1286,7 @@ Because this blueprint uses input sections, it requires Home Assistant 2024.6.0 
 This blueprint intentionally prioritizes active alerts and uses the highest-priority enabled alert for announcements, notifications, light colors, and bypass logic.
 
 It does not use a cooldown, so a more serious alert can still trigger immediately after a less serious alert.
+
+Alert suppression / quiet hours is applied before priority selection. During suppression, only alert types allowed to break through are considered.
 
 It does not re-announce when alerts expire or when the highest-priority selected alert remains unchanged.
