@@ -48,7 +48,7 @@ When a new NWS alert is issued or the highest-priority active alert changes:
 
 This blueprint expects the following Home Assistant entities or integrations:
 
-* NWS Alerts integration sensor
+* [NWS Alerts integration sensor](https://github.com/finity69x2/nws_alerts)
 * Home Assistant Voice / Assist satellite entity
 * One or more Home Assistant `light` entities
 * Optional WLED integration
@@ -60,6 +60,34 @@ This blueprint expects the following Home Assistant entities or integrations:
 * Optional local media file if using a custom preannounce sound
 * Optional Home Assistant Companion App notify entities for push notifications
 * Home Assistant 2024.6.0 or newer for blueprint input sections
+
+## Importing the Blueprint into Home Assistant
+
+You can import this blueprint directly into Home Assistant from GitHub.
+
+1. Open Home Assistant.
+2. Go to **Settings**.
+3. Go to **Automations & scenes**.
+4. Select the **Blueprints** tab.
+5. Click **Import Blueprint**.
+6. Paste this URL:
+
+```text
+https://github.com/SyntaxSnafu777/NWS-Weather-Alerts-Voice-Announcements-WLED-Warning-Light/blob/main/nws_alerts_voice_led.yml
+```
+
+7. Click **Preview Blueprint**.
+8. Click **Import Blueprint**.
+9. After importing, click the blueprint and choose **Create automation**.
+10. Fill out the required blueprint inputs for your Home Assistant setup.
+
+Blueprint URL:
+
+```text
+https://github.com/SyntaxSnafu777/NWS-Weather-Alerts-Voice-Announcements-WLED-Warning-Light/blob/main/nws_alerts_voice_led.yml
+```
+
+If Home Assistant says the blueprint cannot be found, make sure the GitHub repository is public and that the URL points directly to the blueprint YAML file, not just the repository homepage.
 
 ## Blueprint Layout
 
