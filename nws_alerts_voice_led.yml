@@ -1,18 +1,30 @@
 blueprint:
-  name: NWS Alerts - Voice Announcement and WLED Flash
+  name: NWS Weather Alerts - Voice Announcements & Warning Lights
   description: >
-    Announces new NWS alerts on Home Assistant Voice satellites and flashes a WLED light
-    when an occupancy sensor is active. Optionally uses an input_boolean helper as a master
-    enable/disable switch and restores the WLED light state afterward.
+    Configurable National Weather Service alert automation for Home Assistant.
+    Announces selected NWS alert types on one or more Home Assistant Voice / Assist satellites
+    and flashes one or more RGB/RGBW light entities, such as WLED strips. Supports optional
+    helper toggle control, alert-type filtering, serious-alert occupancy bypass, optional
+    announcement volume control, and automatic light state restore.
   domain: automation
 
   input:
     nws_alert_sensor:
       name: NWS Alert Sensor
-      description: The NWS Alerts sensor whose state is the active alert count.
+      description: >
+        The NWS Alerts sensor whose state is the active alert count.
       selector:
         entity:
           domain: sensor
+
+    alert_attribute:
+      name: Alert List Attribute
+      description: >
+        Attribute on the NWS sensor that contains the alert list.
+        For the NWS Alerts integration, this is commonly "Alerts".
+      default: Alerts
+      selector:
+        text:
 
     use_enabled_helper:
       name: Use Enable Helper
@@ -26,48 +38,95 @@ blueprint:
       name: Enable Helper Entity
       description: >
         Optional. Select your helper toggle, such as input_boolean.weather_alerts.
-        This is only used when "Use Enable Helper" is turned on.
+        This is only used when "Use Enable Helper" is enabled.
       default: ""
       selector:
         entity:
           domain: input_boolean
 
-    office_occupancy_sensor:
-      name: Office Occupancy Sensor
-      description: The occupancy/presence sensor that must be on before the WLED strip flashes.
-      selector:
-        entity:
-          domain: binary_sensor
-
-    wled_light:
-      name: WLED Light
-      description: The WLED light strip to flash.
-      selector:
-        entity:
-          domain: light
-
     voice_satellites:
       name: Voice Assist Satellites
-      description: Home Assistant Voice / Assist satellite entities to announce on.
+      description: >
+        One or more Home Assistant Voice / Assist satellite entities to announce on.
       selector:
         entity:
           domain: assist_satellite
           multiple: true
 
-    alert_attribute:
-      name: Alert List Attribute
+    use_voice_volume:
+      name: Set Voice Alert Volume
       description: >
-        Attribute on the NWS sensor that contains the alert list. For the NWS Alerts integration
-        this is commonly "Alerts".
-      default: Alerts
+        Enable this if your voice assistant also exposes a media_player entity and you want
+        the blueprint to set volume before announcing.
+      default: false
+      selector:
+        boolean:
+
+    voice_media_players:
+      name: Voice Media Player Entities
+      description: >
+        Optional. Select media_player entities associated with your voice assistants.
+        These are used only for volume control, not for the announcement itself.
+      default: []
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+
+    voice_volume_level:
+      name: Voice Alert Volume
+      description: >
+        Announcement volume level when volume control is enabled.
+      default: 0.8
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.05
+          mode: slider
+
+    restore_voice_volume:
+      name: Restore Voice Volume After Alert
+      description: >
+        Attempts to restore the selected media_player volume state after the alert.
+        This uses a temporary Home Assistant scene.
+      default: true
+      selector:
+        boolean:
+
+    occupancy_sensor:
+      name: Occupancy / Presence Sensor
+      description: >
+        The occupancy or presence sensor that normally must be on before the warning lights flash.
+        Serious alerts can optionally bypass this sensor.
+      selector:
+        entity:
+          domain: binary_sensor
+
+    alert_lights:
+      name: Warning Light Entities
+      description: >
+        One or more RGB/RGBW light entities to flash, such as WLED strips.
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    restore_scene_id:
+      name: Temporary Light Restore Scene ID
+      description: >
+        Internal scene ID used to snapshot/restore selected light states.
+        Usually leave this alone.
+      default: before_weather_alert_lights
       selector:
         text:
 
-    restore_scene_id:
-      name: Temporary Restore Scene ID
+    volume_restore_scene_id:
+      name: Temporary Volume Restore Scene ID
       description: >
-        Internal scene ID used to snapshot/restore the WLED state. Usually leave this alone.
-      default: before_weather_alerts_wled
+        Internal scene ID used to snapshot/restore selected media_player volume states.
+        Usually leave this alone.
+      default: before_weather_alert_voice_volume
       selector:
         text:
 
@@ -96,7 +155,7 @@ blueprint:
 
     brightness_pct:
       name: Flash Brightness
-      description: Brightness percentage while flashing.
+      description: Brightness percentage used while flashing.
       default: 100
       selector:
         number:
@@ -105,6 +164,118 @@ blueprint:
           step: 1
           mode: slider
           unit_of_measurement: "%"
+
+    enable_tornado_warning:
+      name: Trigger on Tornado Warning
+      default: true
+      selector:
+        boolean:
+
+    enable_tornado_watch:
+      name: Trigger on Tornado Watch
+      default: true
+      selector:
+        boolean:
+
+    enable_severe_thunderstorm_warning:
+      name: Trigger on Severe Thunderstorm Warning
+      default: true
+      selector:
+        boolean:
+
+    enable_severe_thunderstorm_watch:
+      name: Trigger on Severe Thunderstorm Watch
+      default: true
+      selector:
+        boolean:
+
+    enable_flash_flood_warning:
+      name: Trigger on Flash Flood Warning
+      default: true
+      selector:
+        boolean:
+
+    enable_flood_warning:
+      name: Trigger on Flood Warning
+      default: true
+      selector:
+        boolean:
+
+    enable_flood_watch:
+      name: Trigger on Flood Watch
+      default: true
+      selector:
+        boolean:
+
+    enable_winter_weather:
+      name: Trigger on Winter / Snow / Ice Alerts
+      default: true
+      selector:
+        boolean:
+
+    enable_heat_alerts:
+      name: Trigger on Heat Alerts
+      default: true
+      selector:
+        boolean:
+
+    enable_wind_alerts:
+      name: Trigger on Wind Alerts
+      default: true
+      selector:
+        boolean:
+
+    enable_special_weather_statement:
+      name: Trigger on Special Weather Statement
+      default: false
+      selector:
+        boolean:
+
+    enable_advisories:
+      name: Trigger on Weather Advisories
+      description: >
+        Enables common advisory-level alerts such as weather advisory, wind advisory,
+        winter weather advisory, heat advisory, and dense fog advisory.
+      default: false
+      selector:
+        boolean:
+
+    enable_other_alerts:
+      name: Trigger on Other Alerts
+      description: >
+        If enabled, alerts that do not match one of the known categories will still trigger.
+      default: false
+      selector:
+        boolean:
+
+    bypass_occupancy_tornado_warning:
+      name: Bypass Occupancy for Tornado Warning
+      description: Flash lights for Tornado Warnings even if the occupancy sensor is off.
+      default: true
+      selector:
+        boolean:
+
+    bypass_occupancy_severe_thunderstorm_warning:
+      name: Bypass Occupancy for Severe Thunderstorm Warning
+      description: Flash lights for Severe Thunderstorm Warnings even if the occupancy sensor is off.
+      default: false
+      selector:
+        boolean:
+
+    bypass_occupancy_flash_flood_warning:
+      name: Bypass Occupancy for Flash Flood Warning
+      description: Flash lights for Flash Flood Warnings even if the occupancy sensor is off.
+      default: false
+      selector:
+        boolean:
+
+    bypass_occupancy_all_enabled_alerts:
+      name: Bypass Occupancy for All Enabled Alerts
+      description: >
+        If enabled, selected warning lights flash for any enabled alert type regardless of occupancy.
+      default: false
+      selector:
+        boolean:
 
 mode: queued
 max: 10
@@ -115,45 +286,182 @@ triggers:
 
 variables:
   nws_sensor: !input nws_alert_sensor
+  alert_attr: !input alert_attribute
+
   use_enabled_helper: !input use_enabled_helper
   enabled_helper: !input enabled_helper
-  alert_attr: !input alert_attribute
+
+  occupancy_sensor_entity: !input occupancy_sensor
+
+  use_voice_volume: !input use_voice_volume
+  voice_media_players: !input voice_media_players
+  voice_volume_level: !input voice_volume_level
+  restore_voice_volume: !input restore_voice_volume
+
   restore_scene_id: !input restore_scene_id
+  volume_restore_scene_id: !input volume_restore_scene_id
+
   blink_count: !input blink_count
   blink_delay_ms: !input blink_delay_ms
   brightness_pct: !input brightness_pct
 
+  enable_tornado_warning: !input enable_tornado_warning
+  enable_tornado_watch: !input enable_tornado_watch
+  enable_severe_thunderstorm_warning: !input enable_severe_thunderstorm_warning
+  enable_severe_thunderstorm_watch: !input enable_severe_thunderstorm_watch
+  enable_flash_flood_warning: !input enable_flash_flood_warning
+  enable_flood_warning: !input enable_flood_warning
+  enable_flood_watch: !input enable_flood_watch
+  enable_winter_weather: !input enable_winter_weather
+  enable_heat_alerts: !input enable_heat_alerts
+  enable_wind_alerts: !input enable_wind_alerts
+  enable_special_weather_statement: !input enable_special_weather_statement
+  enable_advisories: !input enable_advisories
+  enable_other_alerts: !input enable_other_alerts
+
+  bypass_occupancy_tornado_warning: !input bypass_occupancy_tornado_warning
+  bypass_occupancy_severe_thunderstorm_warning: !input bypass_occupancy_severe_thunderstorm_warning
+  bypass_occupancy_flash_flood_warning: !input bypass_occupancy_flash_flood_warning
+  bypass_occupancy_all_enabled_alerts: !input bypass_occupancy_all_enabled_alerts
+
   alerts: "{{ state_attr(nws_sensor, alert_attr) }}"
 
-  alert_event: >
+  matched_alert_event: >-
+    {% set ns = namespace(event='') %}
     {% if alerts is not none and alerts | count > 0 %}
-      {{ alerts[0].Event
-         | default(alerts[0].event, true)
-         | default(alerts[0].event_name, true)
-         | default('Weather Alert', true) }}
-    {% else %}
-      Weather Alert
-    {% endif %}
+      {% for alert in alerts if ns.event == '' %}
+        {% set event = alert.Event
+          | default(alert.event, true)
+          | default(alert.event_name, true)
+          | default(alert.Title, true)
+          | default(alert.title, true)
+          | default('', true) %}
+        {% set e = event | string %}
+        {% set el = e | lower %}
 
-  alert_headline: >
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+
+        {% set known =
+          is_tornado_warning or
+          is_tornado_watch or
+          is_severe_thunderstorm_warning or
+          is_severe_thunderstorm_watch or
+          is_flash_flood_warning or
+          is_flood_warning or
+          is_flood_watch or
+          is_winter or
+          is_heat or
+          is_wind or
+          is_special or
+          is_advisory
+        %}
+
+        {% set matched =
+          (enable_tornado_warning and is_tornado_warning) or
+          (enable_tornado_watch and is_tornado_watch) or
+          (enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning) or
+          (enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch) or
+          (enable_flash_flood_warning and is_flash_flood_warning) or
+          (enable_flood_warning and is_flood_warning) or
+          (enable_flood_watch and is_flood_watch) or
+          (enable_winter_weather and is_winter) or
+          (enable_heat_alerts and is_heat) or
+          (enable_wind_alerts and is_wind) or
+          (enable_special_weather_statement and is_special) or
+          (enable_advisories and is_advisory) or
+          (enable_other_alerts and not known)
+        %}
+
+        {% if matched %}
+          {% set ns.event = e %}
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    {{ ns.event }}
+
+  matched_alert_headline: >-
+    {% set ns = namespace(headline='') %}
     {% if alerts is not none and alerts | count > 0 %}
-      {{ alerts[0].Headline
-         | default(alerts[0].headline, true)
-         | default(alerts[0].Title, true)
-         | default(alerts[0].title, true)
-         | default('There is an active National Weather Service alert.', true) }}
-    {% else %}
-      There is an active National Weather Service alert.
+      {% for alert in alerts if ns.headline == '' %}
+        {% set event = alert.Event
+          | default(alert.event, true)
+          | default(alert.event_name, true)
+          | default(alert.Title, true)
+          | default(alert.title, true)
+          | default('', true) %}
+        {% set e = event | string %}
+        {% set el = e | lower %}
+
+        {% set is_tornado_warning = 'tornado warning' in el %}
+        {% set is_tornado_watch = 'tornado watch' in el %}
+        {% set is_severe_thunderstorm_warning = 'severe thunderstorm warning' in el %}
+        {% set is_severe_thunderstorm_watch = 'severe thunderstorm watch' in el %}
+        {% set is_flash_flood_warning = 'flash flood warning' in el %}
+        {% set is_flood_warning = 'flood warning' in el and not is_flash_flood_warning %}
+        {% set is_flood_watch = 'flood watch' in el %}
+        {% set is_winter = 'winter storm' in el or 'winter weather' in el or 'snow' in el or 'ice' in el or 'blizzard' in el %}
+        {% set is_heat = 'heat' in el or 'excessive heat' in el %}
+        {% set is_wind = 'wind' in el or 'high wind' in el %}
+        {% set is_special = 'special weather statement' in el %}
+        {% set is_advisory = 'advisory' in el %}
+
+        {% set known =
+          is_tornado_warning or
+          is_tornado_watch or
+          is_severe_thunderstorm_warning or
+          is_severe_thunderstorm_watch or
+          is_flash_flood_warning or
+          is_flood_warning or
+          is_flood_watch or
+          is_winter or
+          is_heat or
+          is_wind or
+          is_special or
+          is_advisory
+        %}
+
+        {% set matched =
+          (enable_tornado_warning and is_tornado_warning) or
+          (enable_tornado_watch and is_tornado_watch) or
+          (enable_severe_thunderstorm_warning and is_severe_thunderstorm_warning) or
+          (enable_severe_thunderstorm_watch and is_severe_thunderstorm_watch) or
+          (enable_flash_flood_warning and is_flash_flood_warning) or
+          (enable_flood_warning and is_flood_warning) or
+          (enable_flood_watch and is_flood_watch) or
+          (enable_winter_weather and is_winter) or
+          (enable_heat_alerts and is_heat) or
+          (enable_wind_alerts and is_wind) or
+          (enable_special_weather_statement and is_special) or
+          (enable_advisories and is_advisory) or
+          (enable_other_alerts and not known)
+        %}
+
+        {% if matched %}
+          {% set headline = alert.Headline
+            | default(alert.headline, true)
+            | default(alert.Description, true)
+            | default(alert.description, true)
+            | default('There is an active National Weather Service alert.', true) %}
+          {% set ns.headline = headline | string %}
+        {% endif %}
+      {% endfor %}
     {% endif %}
+    {{ ns.headline }}
 
-  event_lc: "{{ alert_event | lower }}"
+  event_lc: "{{ matched_alert_event | lower }}"
 
-  alert_message: >
-    National Weather Service alert.
-    {{ alert_event }}.
-    {{ alert_headline }}
-
-  alert_rgb: >
+  alert_rgb: >-
     {% if 'tornado warning' in event_lc %}
       [255, 0, 255]
     {% elif 'tornado watch' in event_lc %}
@@ -162,18 +470,40 @@ variables:
       [255, 0, 0]
     {% elif 'severe thunderstorm watch' in event_lc %}
       [255, 255, 0]
-    {% elif 'flash flood' in event_lc or 'flood warning' in event_lc %}
+    {% elif 'flash flood warning' in event_lc %}
       [0, 0, 255]
-    {% elif 'winter storm' in event_lc or 'snow' in event_lc or 'ice' in event_lc %}
+    {% elif 'flood warning' in event_lc or 'flood watch' in event_lc %}
+      [0, 80, 255]
+    {% elif 'winter storm' in event_lc or 'winter weather' in event_lc or 'snow' in event_lc or 'ice' in event_lc or 'blizzard' in event_lc %}
       [0, 255, 255]
+    {% elif 'heat' in event_lc or 'excessive heat' in event_lc %}
+      [255, 80, 0]
+    {% elif 'wind' in event_lc or 'high wind' in event_lc %}
+      [180, 180, 255]
+    {% elif 'special weather statement' in event_lc %}
+      [255, 255, 255]
+    {% elif 'advisory' in event_lc %}
+      [255, 255, 255]
     {% else %}
       [255, 255, 255]
     {% endif %}
 
+  should_bypass_occupancy: >-
+    {{ bypass_occupancy_all_enabled_alerts or
+       (bypass_occupancy_tornado_warning and 'tornado warning' in event_lc) or
+       (bypass_occupancy_severe_thunderstorm_warning and 'severe thunderstorm warning' in event_lc) or
+       (bypass_occupancy_flash_flood_warning and 'flash flood warning' in event_lc) }}
+
+  should_flash_lights: >-
+    {{ should_bypass_occupancy or is_state(occupancy_sensor_entity, 'on') }}
+
+  alert_message: >-
+    National Weather Service alert.
+    {{ matched_alert_event }}.
+    {{ matched_alert_headline }}
+
 conditions:
   # Optional master enable/disable helper.
-  # If Use Enable Helper is off, this condition passes.
-  # If Use Enable Helper is on, the selected helper must be on.
   - condition: template
     value_template: >
       {{ not use_enabled_helper
@@ -181,25 +511,54 @@ conditions:
          or is_state(enabled_helper, 'on') }}
 
   # Only run when the alert count increases.
-  # This prevents alerts from firing when an alert expires/decreases.
   - condition: template
     value_template: >
-      {{ trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}
+      {{ trigger.from_state is not none
+         and trigger.to_state is not none
+         and trigger.to_state.state | int(0) > trigger.from_state.state | int(0) }}
 
-  # Make sure the alert list actually exists.
+  # Make sure the alert list exists.
   - condition: template
     value_template: >
       {{ alerts is not none and alerts | count > 0 }}
 
+  # Make sure at least one active alert matches the enabled alert categories.
+  - condition: template
+    value_template: >
+      {{ matched_alert_event | trim != '' }}
+
 actions:
-  # Snapshot current WLED state before touching it.
+  # Snapshot selected warning lights before changing them.
   - action: scene.create
     data:
       scene_id: "{{ restore_scene_id }}"
-      snapshot_entities:
-        - !input wled_light
+      snapshot_entities: !input alert_lights
 
-  # Announce on HA Voice / Assist satellites.
+  # Optionally snapshot and set voice media_player volume.
+  - if:
+      - condition: template
+        value_template: >
+          {{ use_voice_volume and voice_media_players | count > 0 }}
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ restore_voice_volume }}"
+        then:
+          - action: scene.create
+            data:
+              scene_id: "{{ volume_restore_scene_id }}"
+              snapshot_entities: !input voice_media_players
+
+      - action: media_player.volume_set
+        target:
+          entity_id: !input voice_media_players
+        data:
+          volume_level: "{{ voice_volume_level }}"
+
+      - delay:
+          milliseconds: 250
+
+  # Announce the alert on selected HA Voice / Assist satellites.
   - action: assist_satellite.announce
     target:
       entity_id: !input voice_satellites
@@ -207,18 +566,17 @@ actions:
       message: "{{ alert_message }}"
       preannounce: true
 
-  # Flash WLED only if office occupancy/presence is active.
+  # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
   - if:
-      - condition: state
-        entity_id: !input office_occupancy_sensor
-        state: "on"
+      - condition: template
+        value_template: "{{ should_flash_lights }}"
     then:
       - repeat:
           count: "{{ blink_count }}"
           sequence:
             - action: light.turn_on
               target:
-                entity_id: !input wled_light
+                entity_id: !input alert_lights
               data:
                 brightness_pct: "{{ brightness_pct }}"
                 rgb_color: "{{ alert_rgb }}"
@@ -229,14 +587,24 @@ actions:
 
             - action: light.turn_off
               target:
-                entity_id: !input wled_light
+                entity_id: !input alert_lights
               data:
                 transition: 0
 
             - delay:
                 milliseconds: "{{ blink_delay_ms }}"
 
-  # Restore previous WLED state.
+  # Restore selected warning lights.
   - action: scene.turn_on
     target:
       entity_id: "scene.{{ restore_scene_id }}"
+
+  # Optionally restore voice media_player volume.
+  - if:
+      - condition: template
+        value_template: >
+          {{ use_voice_volume and restore_voice_volume and voice_media_players | count > 0 }}
+    then:
+      - action: scene.turn_on
+        target:
+          entity_id: "scene.{{ volume_restore_scene_id }}"
