@@ -103,15 +103,16 @@ blueprint:
           selector:
             boolean:
 
-        preannounce_media_id:
-          name: Custom Preannounce Media ID
+        custom_preannounce_media:
+          name: Custom Preannounce Sound
           description: >
-            Optional. Media source ID for a custom sound to play before the announcement.
-            Leave blank to use the default Assist satellite preannounce sound.
-            Example: media-source://media_source/local/weather-alert-tone.mp3
-          default: ""
+            Optional. Select a custom audio file from Home Assistant Media to play before
+            the announcement. Leave empty to use the default Assist satellite preannounce sound.
+          default: {}
           selector:
-            text:
+            media:
+              accept:
+                - audio/*
 
         use_voice_volume:
           name: Set Voice Alert Volume
@@ -492,7 +493,12 @@ variables:
   occupancy_sensor_entity: !input occupancy_sensor
 
   use_preannounce: !input use_preannounce
-  preannounce_media_id: !input preannounce_media_id
+  custom_preannounce_media: !input custom_preannounce_media
+  custom_preannounce_media_id: >-
+    {{ custom_preannounce_media.media_content_id
+       if custom_preannounce_media is mapping
+          and custom_preannounce_media.media_content_id is defined
+       else '' }}
 
   send_mobile_notifications: !input send_mobile_notifications
   mobile_notify_entities: !input mobile_notify_entities
@@ -788,7 +794,7 @@ actions:
       - conditions:
           - condition: template
             value_template: >
-              {{ use_preannounce and preannounce_media_id | trim != '' }}
+              {{ use_preannounce and custom_preannounce_media_id | trim != '' }}
         sequence:
           - action: assist_satellite.announce
             target:
@@ -796,7 +802,7 @@ actions:
             data:
               message: "{{ alert_message }}"
               preannounce: true
-              preannounce_media_id: "{{ preannounce_media_id }}"
+              preannounce_media_id: "{{ custom_preannounce_media_id }}"
 
       - conditions:
           - condition: template

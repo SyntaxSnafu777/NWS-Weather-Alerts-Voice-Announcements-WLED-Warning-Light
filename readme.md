@@ -265,17 +265,17 @@ You have three options:
 
 ```text
 Use Preannounce Sound: enabled
-Custom Preannounce Media ID: blank
+Custom Preannounce Sound: empty
 ```
 
 This uses Home Assistant's default Assist satellite preannounce sound.
 
 ```text
 Use Preannounce Sound: enabled
-Custom Preannounce Media ID: media-source://media_source/local/weather-alert-tone.mp3
+Custom Preannounce Sound: select an audio file from Home Assistant Media
 ```
 
-This uses your custom preannounce sound.
+This uses your selected custom preannounce sound.
 
 ```text
 Use Preannounce Sound: disabled
@@ -283,54 +283,24 @@ Use Preannounce Sound: disabled
 
 This disables the preannounce sound.
 
-### Custom Preannounce Media ID
+### Custom Preannounce Sound
+
+The blueprint uses Home Assistant's media browser selector for custom preannounce audio.
 
 To use a custom sound:
 
-1. Upload an audio file to Home Assistant Media.
-2. Create a temporary **Play media** action in an automation or script.
-3. Use the media picker to select the sound.
-4. Switch the action to YAML mode.
-5. Copy the generated media ID.
-6. Paste that media ID into **Custom Preannounce Media ID**.
+1. Upload a short MP3 or WAV file to Home Assistant Media.
+2. In the automation created from this blueprint, open **Voice, Audio & Preannounce**.
+3. Enable **Use Preannounce Sound**.
+4. Select the file under **Custom Preannounce Sound**.
 
-Example media ID:
+You do not need to manually type a media source path such as:
 
 ```text
 media-source://media_source/local/weather-alert-tone.mp3
 ```
 
 A short MP3 or WAV file is usually best.
-
-## Mobile Push Notifications
-
-The blueprint can send push notifications to one or more Home Assistant notify entities, including mobile app notification entities.
-
-To use this feature:
-
-```text
-Send Mobile Push Notifications: enabled
-Mobile Notify Entities: select one or more notify entities from the picker
-```
-
-The notification title uses the alert event.
-
-Example:
-
-```text
-NWS Weather Alert: Tornado Warning
-```
-
-The notification message uses the alert headline from the NWS alert.
-
-For Home Assistant Companion App notifications, your phone or tablet must already be connected to Home Assistant through the Companion App and notification permissions must be allowed on the device.
-
-In current Home Assistant versions, mobile app notification targets may appear as `notify` entities that can be selected directly in the blueprint UI. Example entity names may look like:
-
-```text
-notify.mobile_app_your_phone
-notify.mobile_app_another_phone
-```
 
 ## Voice Volume Control
 
@@ -440,15 +410,11 @@ If enabled and the custom media ID is filled in, the custom sound is used.
 
 If disabled, no preannounce sound is played.
 
-### Custom Preannounce Media ID
+### Custom Preannounce Sound
 
-Optional media source ID for a custom sound.
+Optional audio file selected from Home Assistant Media.
 
-Example:
-
-```text
-media-source://media_source/local/weather-alert-tone.mp3
-```
+Leave it empty to use Home Assistant's default Assist satellite preannounce sound.
 
 ### Send Mobile Push Notifications
 
@@ -625,7 +591,7 @@ Use Enable Helper: enabled
 Enable Helper Entity: input_boolean.weather_alerts
 
 Use Preannounce Sound: enabled
-Custom Preannounce Media ID: blank
+Custom Preannounce Sound: empty
 
 Send Mobile Push Notifications: optional
 Mobile Notify Entities: select one or more notify entities if enabled
@@ -835,12 +801,11 @@ Use brightness-only mode if your automation trace shows an error related to `rgb
 To test a custom preannounce sound:
 
 1. Upload a short MP3 or WAV file to Home Assistant Media.
-2. Copy its media source ID.
-3. Enable **Use Preannounce Sound**.
-4. Paste the media source ID into **Custom Preannounce Media ID**.
-5. Run the fake Tornado Warning test.
+2. Enable **Use Preannounce Sound**.
+3. Select the audio file under **Custom Preannounce Sound**.
+4. Run the fake Tornado Warning test.
 
-If the custom sound does not play, clear **Custom Preannounce Media ID** and test again. With the field blank, Home Assistant should use the default Assist satellite preannounce sound.
+If the custom sound does not play, clear **Custom Preannounce Sound** and test again. With no custom sound selected, Home Assistant should use the default Assist satellite preannounce sound.
 
 ### Testing Mobile Push Notifications
 
@@ -910,7 +875,7 @@ Common causes:
 * The selected warning light entity is unavailable
 * The occupancy sensor is off and occupancy bypass is not enabled for that alert type
 * Light Flash Mode is set to alert colors but one of the selected lights does not support RGB color
-* A custom preannounce media ID is invalid or inaccessible
+* The selected custom preannounce sound is invalid or inaccessible
 
 For the easiest first test, use **Tornado Warning** because the blueprint defaults to bypassing occupancy for Tornado Warnings.
 
@@ -930,9 +895,9 @@ Check that:
 
 * **Use Preannounce Sound** is enabled
 * The selected Assist satellite supports preannounce audio
-* If using a custom sound, the **Custom Preannounce Media ID** is valid
+* If using a custom sound, the selected **Custom Preannounce Sound** is valid and accessible
 
-Try clearing **Custom Preannounce Media ID**. If the default preannounce sound works, the issue is likely the custom media ID or media file.
+Try clearing **Custom Preannounce Sound**. If the default preannounce sound works, the issue is likely the selected media file.
 
 ### Import/save error: Unknown device `{{ repeat.item }}`
 
