@@ -3,9 +3,10 @@ blueprint:
   description: >
     Configurable National Weather Service alert automation for Home Assistant.
     Announces selected NWS alert types on one or more Home Assistant Voice / Assist satellites
-    and flashes one or more RGB/RGBW light entities, such as WLED strips. Supports optional
-    helper toggle control, alert-type filtering, serious-alert occupancy bypass, optional
-    announcement volume control, and automatic light state restore.
+    and flashes one or more light entities, such as WLED strips, RGB bulbs, or basic smart bulbs.
+    Supports optional helper toggle control, alert-type filtering, serious-alert occupancy bypass,
+    optional announcement volume control, optional custom preannounce sound, selectable light flash
+    mode, and automatic light state restore.
   domain: automation
 
   input:
@@ -52,6 +53,25 @@ blueprint:
         entity:
           domain: assist_satellite
           multiple: true
+
+    use_preannounce:
+      name: Use Preannounce Sound
+      description: >
+        Play a sound before the voice announcement. If no custom media ID is provided,
+        Home Assistant's default Assist satellite preannounce sound is used.
+      default: true
+      selector:
+        boolean:
+
+    preannounce_media_id:
+      name: Custom Preannounce Media ID
+      description: >
+        Optional. Media source ID for a custom sound to play before the announcement.
+        Leave blank to use the default Assist satellite preannounce sound.
+        Example: media-source://media_source/local/weather-alert-tone.mp3
+      default: ""
+      selector:
+        text:
 
     use_voice_volume:
       name: Set Voice Alert Volume
@@ -106,11 +126,27 @@ blueprint:
     alert_lights:
       name: Warning Light Entities
       description: >
-        One or more RGB/RGBW light entities to flash, such as WLED strips.
+        One or more light entities to flash. Supports WLED, RGB/RGBW bulbs, and basic smart bulbs.
       selector:
         entity:
           domain: light
           multiple: true
+
+    light_flash_mode:
+      name: Light Flash Mode
+      description: >
+        Choose Alert Colors for RGB/RGBW lights such as WLED or color bulbs.
+        Choose Brightness Only for basic white/dimmable smart bulbs or mixed light groups
+        where some lights may not support RGB color.
+      default: alert_color
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - label: Alert colors - RGB/RGBW lights
+              value: alert_color
+            - label: Brightness only - basic smart bulbs
+              value: brightness_only
 
     restore_scene_id:
       name: Temporary Light Restore Scene ID
@@ -293,10 +329,15 @@ variables:
 
   occupancy_sensor_entity: !input occupancy_sensor
 
+  use_preannounce: !input use_preannounce
+  preannounce_media_id: !input preannounce_media_id
+
   use_voice_volume: !input use_voice_volume
   voice_media_players: !input voice_media_players
   voice_volume_level: !input voice_volume_level
   restore_voice_volume: !input restore_voice_volume
+
+  light_flash_mode: !input light_flash_mode
 
   restore_scene_id: !input restore_scene_id
   volume_restore_scene_id: !input volume_restore_scene_id
@@ -559,40 +600,94 @@ actions:
           milliseconds: 250
 
   # Announce the alert on selected HA Voice / Assist satellites.
-  - action: assist_satellite.announce
-    target:
-      entity_id: !input voice_satellites
-    data:
-      message: "{{ alert_message }}"
-      preannounce: true
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ use_preannounce and preannounce_media_id | trim != '' }}
+        sequence:
+          - action: assist_satellite.announce
+            target:
+              entity_id: !input voice_satellites
+            data:
+              message: "{{ alert_message }}"
+              preannounce: true
+              preannounce_media_id: "{{ preannounce_media_id }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ use_preannounce }}"
+        sequence:
+          - action: assist_satellite.announce
+            target:
+              entity_id: !input voice_satellites
+            data:
+              message: "{{ alert_message }}"
+              preannounce: true
+
+    default:
+      - action: assist_satellite.announce
+        target:
+          entity_id: !input voice_satellites
+        data:
+          message: "{{ alert_message }}"
+          preannounce: false
 
   # Flash selected warning lights if occupancy is active or the alert bypasses occupancy.
   - if:
       - condition: template
         value_template: "{{ should_flash_lights }}"
     then:
-      - repeat:
-          count: "{{ blink_count }}"
-          sequence:
-            - action: light.turn_on
-              target:
-                entity_id: !input alert_lights
-              data:
-                brightness_pct: "{{ brightness_pct }}"
-                rgb_color: "{{ alert_rgb }}"
-                transition: 0
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ light_flash_mode == 'brightness_only' }}"
+            sequence:
+              - repeat:
+                  count: "{{ blink_count }}"
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: !input alert_lights
+                      data:
+                        brightness_pct: "{{ brightness_pct }}"
+                        transition: 0
 
-            - delay:
-                milliseconds: "{{ blink_delay_ms }}"
+                    - delay:
+                        milliseconds: "{{ blink_delay_ms }}"
 
-            - action: light.turn_off
-              target:
-                entity_id: !input alert_lights
-              data:
-                transition: 0
+                    - action: light.turn_off
+                      target:
+                        entity_id: !input alert_lights
+                      data:
+                        transition: 0
 
-            - delay:
-                milliseconds: "{{ blink_delay_ms }}"
+                    - delay:
+                        milliseconds: "{{ blink_delay_ms }}"
+
+        default:
+          - repeat:
+              count: "{{ blink_count }}"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: !input alert_lights
+                  data:
+                    brightness_pct: "{{ brightness_pct }}"
+                    rgb_color: "{{ alert_rgb }}"
+                    transition: 0
+
+                - delay:
+                    milliseconds: "{{ blink_delay_ms }}"
+
+                - action: light.turn_off
+                  target:
+                    entity_id: !input alert_lights
+                  data:
+                    transition: 0
+
+                - delay:
+                    milliseconds: "{{ blink_delay_ms }}"
 
   # Restore selected warning lights.
   - action: scene.turn_on

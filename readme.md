@@ -2,24 +2,27 @@
 
 A configurable Home Assistant automation blueprint for National Weather Service alerts.
 
-This blueprint announces selected NWS alert types on one or more Home Assistant Voice / Assist satellite devices and can flash one or more RGB/RGBW warning lights, such as WLED LED strips.
+This blueprint announces selected NWS alert types on one or more Home Assistant Voice / Assist satellite devices and can flash one or more warning lights, such as WLED LED strips, RGB/RGBW smart bulbs, or basic dimmable smart bulbs.
 
-It supports optional dashboard enable/disable control, alert-type filtering, serious-alert occupancy bypass, optional voice volume control, and automatic light state restore.
+It supports optional dashboard enable/disable control, alert-type filtering, serious-alert occupancy bypass, optional voice volume control, optional custom preannounce sounds, regular smart bulb compatibility, and automatic light state restore.
 
 ## Features
 
 * Announce National Weather Service alerts on one or more Home Assistant Voice / Assist satellites
-* Flash one or more RGB/RGBW light entities, including WLED strips
+* Flash one or more Home Assistant `light` entities
+* Supports WLED strips, RGB/RGBW smart bulbs, and basic dimmable smart bulbs
+* Select between alert-color flashing and brightness-only flashing
 * Select which alert types should trigger the automation
 * Optional helper toggle to enable or disable the automation from a dashboard
 * Optional occupancy or presence requirement before flashing lights
 * Serious alert bypass options for Tornado Warning, Severe Thunderstorm Warning, and Flash Flood Warning
 * Optional bypass for all enabled alert types
+* Optional default or custom preannounce sound before the voice announcement
 * Optional media player volume control for voice alert announcements
 * Optional restore of previous voice media player volume
 * Automatic restore of previous warning light state
 * Configurable blink count, blink speed, and brightness
-* Uses different colors for different weather alert categories
+* Uses different colors for different weather alert categories when alert-color mode is enabled
 * Only triggers when the NWS alert count increases
 
 ## Example Use Case
@@ -28,11 +31,12 @@ You have Home Assistant Voice devices around your home and a WLED LED strip abov
 
 When a new NWS alert is issued:
 
-1. The selected voice assistants announce the alert.
-2. The selected WLED light strips flash in an alert-specific color.
-3. If the alert is not serious, the lights only flash when your selected occupancy sensor is active.
-4. If the alert is serious and bypass is enabled, the lights flash even if occupancy is not detected.
-5. After the alert sequence, the lights return to their previous state.
+1. The selected voice assistants play an optional preannounce sound.
+2. The selected voice assistants announce the alert.
+3. The selected warning lights flash.
+4. If the alert is not serious, the lights only flash when your selected occupancy sensor is active.
+5. If the alert is serious and bypass is enabled, the lights flash even if occupancy is not detected.
+6. After the alert sequence, the lights return to their previous state.
 
 ## Requirements
 
@@ -40,11 +44,14 @@ This blueprint expects the following Home Assistant entities or integrations:
 
 * NWS Alerts integration sensor
 * Home Assistant Voice / Assist satellite entity
-* One or more RGB/RGBW light entities
+* One or more Home Assistant `light` entities
 * Optional WLED integration
+* Optional RGB/RGBW smart bulbs
+* Optional basic white/dimmable smart bulbs
 * Occupancy or presence binary sensor
 * Optional `input_boolean` helper toggle
 * Optional `media_player` entities for voice volume control
+* Optional local media file if using a custom preannounce sound
 
 ## Recommended Helper Toggle
 
@@ -104,7 +111,7 @@ By default, the more important watch and warning categories are enabled. Lower-p
 
 ## Alert Colors
 
-Default warning light colors:
+When **Light Flash Mode** is set to **Alert colors**, the default warning light colors are:
 
 | Alert Type                     | Color             |
 | ------------------------------ | ----------------- |
@@ -120,6 +127,58 @@ Default warning light colors:
 | Special Weather Statement      | White             |
 | Advisory                       | White             |
 | Other Alert                    | White             |
+
+## Light Compatibility
+
+This blueprint is not limited to WLED.
+
+Any Home Assistant `light` entity can be selected as a warning light.
+
+Recommended options:
+
+* WLED strips
+* RGB/RGBW Zigbee bulbs
+* Hue bulbs
+* Kasa/Tapo color bulbs
+* Shelly RGBW lights
+* Basic white or dimmable smart bulbs
+
+### Light Flash Mode
+
+The blueprint includes a **Light Flash Mode** option.
+
+#### Alert colors - RGB/RGBW lights
+
+Use this mode for WLED strips and color-capable bulbs.
+
+The blueprint sends:
+
+```yaml
+brightness_pct: 100
+rgb_color: [255, 0, 0]
+```
+
+The actual color changes depending on the alert type.
+
+Use this mode when all selected warning lights support RGB color.
+
+#### Brightness only - basic smart bulbs
+
+Use this mode for white-only bulbs, dimmable bulbs, or mixed groups where some lights may not support RGB color.
+
+The blueprint sends brightness only and does not send `rgb_color`.
+
+This avoids errors from integrations that do not support color.
+
+Use this mode for entities such as:
+
+```yaml
+light.office_lamp
+light.bedroom_lamp
+light.basement_smart_bulb
+```
+
+The light will blink on and off at the configured brightness, but it will not change alert colors.
 
 ## Occupancy Logic
 
@@ -174,6 +233,51 @@ The announcement format is:
 National Weather Service alert. [Alert Event]. [Alert Headline].
 ```
 
+## Preannounce Sound
+
+The blueprint can play a preannounce sound before the voice announcement.
+
+You have three options:
+
+```text
+Use Preannounce Sound: enabled
+Custom Preannounce Media ID: blank
+```
+
+This uses Home Assistant's default Assist satellite preannounce sound.
+
+```text
+Use Preannounce Sound: enabled
+Custom Preannounce Media ID: media-source://media_source/local/weather-alert-tone.mp3
+```
+
+This uses your custom preannounce sound.
+
+```text
+Use Preannounce Sound: disabled
+```
+
+This disables the preannounce sound.
+
+### Custom Preannounce Media ID
+
+To use a custom sound:
+
+1. Upload an audio file to Home Assistant Media.
+2. Create a temporary **Play media** action in an automation or script.
+3. Use the media picker to select the sound.
+4. Switch the action to YAML mode.
+5. Copy the generated media ID.
+6. Paste that media ID into **Custom Preannounce Media ID**.
+
+Example media ID:
+
+```text
+media-source://media_source/local/weather-alert-tone.mp3
+```
+
+A short MP3 or WAV file is usually best.
+
 ## Voice Volume Control
 
 Home Assistant Voice / Assist satellite entities do not always directly expose volume controls.
@@ -203,7 +307,7 @@ The blueprint snapshots the selected warning light entities before flashing them
 
 After the flash sequence, it restores the previous light state using a temporary Home Assistant scene.
 
-This should restore normal light state, brightness, and color.
+This should restore normal light state, brightness, color, and many standard light attributes.
 
 If your WLED strip was running a complex WLED preset or effect, Home Assistant may not always restore every WLED-specific detail perfectly. For basic light state, color, and brightness, this should work well.
 
@@ -272,6 +376,26 @@ input_boolean.weather_alerts
 
 One or more Home Assistant Voice / Assist satellite entities that should announce the alert.
 
+### Use Preannounce Sound
+
+Controls whether a sound plays before the voice announcement.
+
+If enabled and the custom media ID is blank, the default Assist satellite preannounce sound is used.
+
+If enabled and the custom media ID is filled in, the custom sound is used.
+
+If disabled, no preannounce sound is played.
+
+### Custom Preannounce Media ID
+
+Optional media source ID for a custom sound.
+
+Example:
+
+```text
+media-source://media_source/local/weather-alert-tone.mp3
+```
+
 ### Set Voice Alert Volume
 
 Enables optional volume control using selected `media_player` entities.
@@ -320,7 +444,16 @@ Example entities:
 light.desk_wled
 light.office_led_strip
 light.bedroom_warning_light
+light.office_lamp
 ```
+
+### Light Flash Mode
+
+Controls whether the blueprint sends alert colors or brightness only.
+
+Use **Alert colors - RGB/RGBW lights** for WLED and color-capable bulbs.
+
+Use **Brightness only - basic smart bulbs** for white-only bulbs, dimmable bulbs, or mixed groups where not every selected light supports RGB color.
 
 ### Temporary Light Restore Scene ID
 
@@ -391,11 +524,16 @@ icon: mdi:alert
 
 ## Recommended Starting Configuration
 
-For most users, a good starting point is:
+For most users with WLED or color-capable smart bulbs:
 
 ```text
 Use Enable Helper: enabled
 Enable Helper Entity: input_boolean.weather_alerts
+
+Use Preannounce Sound: enabled
+Custom Preannounce Media ID: blank
+
+Light Flash Mode: Alert colors - RGB/RGBW lights
 
 Trigger on Tornado Warning: enabled
 Trigger on Tornado Watch: enabled
@@ -421,6 +559,12 @@ Restore Voice Volume After Alert: enabled
 Blink Count: 8
 Blink Delay: 500 ms
 Flash Brightness: 100%
+```
+
+For basic white smart bulbs:
+
+```text
+Light Flash Mode: Brightness only - basic smart bulbs
 ```
 
 ## Testing Without an Active NWS Alert
@@ -569,6 +713,38 @@ Alerts:
     Description: This is only a test.
 ```
 
+### Testing Light Flash Modes
+
+To test WLED or RGB bulbs, set **Light Flash Mode** to:
+
+```text
+Alert colors - RGB/RGBW lights
+```
+
+Then test a few different alert types. The light color should change depending on the alert.
+
+To test basic smart bulbs, set **Light Flash Mode** to:
+
+```text
+Brightness only - basic smart bulbs
+```
+
+Then run the same fake alert test. The selected lights should blink on and off without changing color.
+
+Use brightness-only mode if your automation trace shows an error related to `rgb_color` or unsupported color features.
+
+### Testing Custom Preannounce Sounds
+
+To test a custom preannounce sound:
+
+1. Upload a short MP3 or WAV file to Home Assistant Media.
+2. Copy its media source ID.
+3. Enable **Use Preannounce Sound**.
+4. Paste the media source ID into **Custom Preannounce Media ID**.
+5. Run the fake Tornado Warning test.
+
+If the custom sound does not play, clear **Custom Preannounce Media ID** and test again. With the field blank, Home Assistant should use the default Assist satellite preannounce sound.
+
 ### Reset After Testing
 
 After testing, set the NWS alert sensor back to:
@@ -613,9 +789,10 @@ Common causes:
 * The selected Assist satellite entity is unavailable
 * The selected warning light entity is unavailable
 * The occupancy sensor is off and occupancy bypass is not enabled for that alert type
+* Light Flash Mode is set to alert colors but one of the selected lights does not support RGB color
+* A custom preannounce media ID is invalid or inaccessible
 
 For the easiest first test, use **Tornado Warning** because the blueprint defaults to bypassing occupancy for Tornado Warnings.
-
 
 ## Troubleshooting
 
@@ -626,6 +803,16 @@ Check that:
 * You selected `assist_satellite` entities
 * The Assist satellite entities are available
 * The automation trace shows the announcement action running
+
+### Preannounce sound does not play
+
+Check that:
+
+* **Use Preannounce Sound** is enabled
+* The selected Assist satellite supports preannounce audio
+* If using a custom sound, the **Custom Preannounce Media ID** is valid
+
+Try clearing **Custom Preannounce Media ID**. If the default preannounce sound works, the issue is likely the custom media ID or media file.
 
 ### Voice volume does not change
 
@@ -645,6 +832,16 @@ Check that:
 * The occupancy sensor is `on`
 * Or the alert type is configured to bypass occupancy
 * The automation trace shows the light flashing section running
+
+### Light color does not change
+
+Check that:
+
+* **Light Flash Mode** is set to **Alert colors - RGB/RGBW lights**
+* The selected light supports RGB color
+* The selected light integration accepts `rgb_color`
+
+If the light is a basic white or dimmable bulb, use **Brightness only - basic smart bulbs**.
 
 ### Lights do not restore exactly
 
