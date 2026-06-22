@@ -1,4 +1,6 @@
-# NWS Weather Alerts - Voice Announcements & Warning Lights
+# HA Weather Beacon
+
+NWS voice announcements and light-based warning alerts for Home Assistant.
 
 A configurable Home Assistant automation blueprint for National Weather Service alerts.
 
@@ -73,7 +75,7 @@ You can import this blueprint directly into Home Assistant from GitHub.
 6. Paste this URL:
 
 ```text
-https://github.com/SyntaxSnafu777/NWS-Weather-Alerts-Voice-Announcements-WLED-Warning-Light/blob/main/nws_alerts_voice_led.yml
+https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/main/nws_alerts_voice_led.yml
 ```
 
 7. Click **Preview Blueprint**.
@@ -84,7 +86,7 @@ https://github.com/SyntaxSnafu777/NWS-Weather-Alerts-Voice-Announcements-WLED-Wa
 Blueprint URL:
 
 ```text
-https://github.com/SyntaxSnafu777/NWS-Weather-Alerts-Voice-Announcements-WLED-Warning-Light/blob/main/nws_alerts_voice_led.yml
+https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/main/nws_alerts_voice_led.yml
 ```
 
 If Home Assistant says the blueprint cannot be found, make sure the GitHub repository is public and that the URL points directly to the blueprint YAML file, not just the repository homepage.

@@ -1,5 +1,5 @@
 blueprint:
-  name: NWS Weather Alerts - Voice Announcements & Warning Lights
+  name: HA Weather Beacon - NWS Voice & Light Alerts
   description: >
     Configurable National Weather Service alert automation for Home Assistant.
     Announces selected NWS alert types on one or more Home Assistant Voice / Assist satellites
