@@ -65,7 +65,9 @@ This blueprint expects the following Home Assistant entities or integrations:
 
 ## Importing the Blueprint into Home Assistant
 
-You can import this blueprint directly into Home Assistant from GitHub.
+You can import the latest stable version of this blueprint directly into Home Assistant from GitHub.
+
+The `stable` branch is the recommended import source for normal use. The `main` branch may contain newer development changes that have not been released yet.
 
 1. Open Home Assistant.
 2. Go to **Settings**.
@@ -75,7 +77,7 @@ You can import this blueprint directly into Home Assistant from GitHub.
 6. Paste this URL:
 
 ```text
-https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/main/nws_alerts_voice_led.yml
+https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/stable/nws_alerts_voice_led.yml
 ```
 
 7. Click **Preview Blueprint**.
@@ -86,10 +88,31 @@ https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/main/nws_alerts_voice_l
 Blueprint URL:
 
 ```text
-https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/main/nws_alerts_voice_led.yml
+https://github.com/SyntaxSnafu777/ha-weather-beacon/blob/stable/nws_alerts_voice_led.yml
 ```
 
-If Home Assistant says the blueprint cannot be found, make sure the GitHub repository is public and that the URL points directly to the blueprint YAML file, not just the repository homepage.
+If Home Assistant says the blueprint cannot be found, make sure the URL points directly to the blueprint YAML file, not just the repository homepage.
+
+## Updating the Blueprint
+
+Depending on your Home Assistant setup, blueprint updates may appear under:
+
+```text
+Settings -> System -> Updates
+```
+
+If an update appears there, you can update the blueprint from the Home Assistant UI.
+
+If no update appears, manually re-import the stable blueprint URL:
+
+1. Go to **Settings**.
+2. Go to **Automations & scenes**.
+3. Select the **Blueprints** tab.
+4. Click **Import Blueprint**.
+5. Paste the stable blueprint URL again.
+6. Preview and import/overwrite the existing blueprint.
+
+Your existing automations should remain, but review the automation settings after updating in case new options were added.
 
 ## Blueprint Layout
 
@@ -459,12 +482,6 @@ To use a custom sound:
 2. In the automation created from this blueprint, open **Voice, Audio & Preannounce**.
 3. Enable **Use Preannounce Sound**.
 4. Select the file under **Custom Preannounce Sound**.
-
-You do not need to manually type a media source path such as:
-
-```text
-media-source://media_source/local/weather-alert-tone.mp3
-```
 
 A short MP3 or WAV file is usually best.
 
