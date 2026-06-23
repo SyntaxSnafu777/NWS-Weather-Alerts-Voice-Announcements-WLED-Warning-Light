@@ -1449,6 +1449,43 @@ variables:
   should_flash_any_zone: >-
     {{ zone1_should_flash or zone2_should_flash or zone3_should_flash or zone4_should_flash or zone5_should_flash }}
 
+  off_light_restore_memory: >-
+    {#-
+      Scene restore correctly turns lights back off, but many bulbs/controllers remember
+      the last on-state color. If a light was off before the alert, capture its last
+      remembered color/temp/brightness so we can briefly re-prime that state after the
+      blink, then turn it back off.
+    -#}
+    {% set ns = namespace(entities=[], items=[]) %}
+    {% set zone_light_lists = [
+      zone1_lights if zone1_should_flash else [],
+      zone2_lights if zone2_should_flash else [],
+      zone3_lights if zone3_should_flash else [],
+      zone4_lights if zone4_should_flash else [],
+      zone5_lights if zone5_should_flash else []
+    ] %}
+    {% for lights in zone_light_lists %}
+      {% for entity_id in lights %}
+        {% if entity_id not in ns.entities %}
+          {% set ns.entities = ns.entities + [entity_id] %}
+          {% set light_state = states[entity_id] %}
+          {% if light_state is not none and light_state.state == 'off' %}
+            {% set attrs = light_state.attributes %}
+            {% set ns.items = ns.items + [dict(
+              entity_id=entity_id,
+              brightness=attrs.brightness | default(none),
+              color_mode=attrs.color_mode | default(''),
+              color_temp_kelvin=attrs.color_temp_kelvin | default(none),
+              rgb_color=attrs.rgb_color | default(none),
+              hs_color=attrs.hs_color | default(none),
+              xy_color=attrs.xy_color | default(none)
+            )] %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {{ ns.items }}
+
   alert_message: >-
     National Weather Service alert.
     {{ matched_alert_event }}.
@@ -1901,6 +1938,155 @@ actions:
       - action: scene.turn_on
         target:
           entity_id: "scene.{{ restore_scene_id }}_zone5"
+
+  # Re-prime remembered color/temp for lights that were off before the alert.
+  # This prevents off lights from turning back on later with the alert blink color.
+  - if:
+      - condition: template
+        value_template: "{{ off_light_restore_memory | count > 0 }}"
+    then:
+      - repeat:
+          for_each: "{{ off_light_restore_memory }}"
+          sequence:
+            - variables:
+                restore_light_entity: "{{ repeat.item.entity_id }}"
+
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.color_temp_kelvin is number
+                           and repeat.item.brightness is number }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        color_temp_kelvin: "{{ repeat.item.color_temp_kelvin }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: "{{ repeat.item.color_temp_kelvin is number }}"
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        color_temp_kelvin: "{{ repeat.item.color_temp_kelvin }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.rgb_color is sequence
+                           and repeat.item.rgb_color | count == 3
+                           and repeat.item.brightness is number }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        rgb_color: "{{ repeat.item.rgb_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.rgb_color is sequence
+                           and repeat.item.rgb_color | count == 3 }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        rgb_color: "{{ repeat.item.rgb_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.hs_color is sequence
+                           and repeat.item.hs_color | count == 2
+                           and repeat.item.brightness is number }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        hs_color: "{{ repeat.item.hs_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.hs_color is sequence
+                           and repeat.item.hs_color | count == 2 }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        hs_color: "{{ repeat.item.hs_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.xy_color is sequence
+                           and repeat.item.xy_color | count == 2
+                           and repeat.item.brightness is number }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        xy_color: "{{ repeat.item.xy_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: >
+                        {{ repeat.item.xy_color is sequence
+                           and repeat.item.xy_color | count == 2 }}
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        xy_color: "{{ repeat.item.xy_color }}"
+                        transition: 0
+
+                - conditions:
+                    - condition: template
+                      value_template: "{{ repeat.item.brightness is number }}"
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ restore_light_entity }}"
+                      data:
+                        brightness: "{{ repeat.item.brightness }}"
+                        transition: 0
+
+              default:
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ restore_light_entity }}"
+                  data:
+                    transition: 0
+
+            - delay:
+                milliseconds: 100
+
+            - action: light.turn_off
+              target:
+                entity_id: "{{ restore_light_entity }}"
+              data:
+                transition: 0
 
   # Optionally restore voice media_player volume.
   - if:
